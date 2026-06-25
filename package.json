@@ -1,0 +1,25 @@
+{
+  "name": "threejs-midtownraleigh",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/proj4": "^2.5.5",
+    "@types/three": "^0.185.0",
+    "typescript": "^5.5.3",
+    "vite": "^5.3.1",
+    "vitest": "^2.0.3"
+  },
+  "dependencies": {
+    "osmtogeojson": "^3.0.0-beta.5",
+    "proj4": "^2.11.0",
+    "three": ">=0.165.0",
+    "three-mesh-bvh": "^0.7.8"
+  }
+}
