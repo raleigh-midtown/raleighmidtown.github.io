@@ -1,0 +1,110 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "fallback-1",
+      "properties": {
+        "building": "commercial",
+        "height": "15",
+        "name": "Midtown Office A"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-78.695, 35.787],
+            [-78.694, 35.787],
+            [-78.694, 35.788],
+            [-78.695, 35.788],
+            [-78.695, 35.787]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "fallback-2",
+      "properties": {
+        "building": "residential",
+        "building:levels": "3",
+        "name": "Midtown Apartments B"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-78.690, 35.790],
+            [-78.689, 35.790],
+            [-78.689, 35.791],
+            [-78.690, 35.791],
+            [-78.690, 35.790]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "fallback-3",
+      "properties": {
+        "building": "yes",
+        "height": "12",
+        "name": "Midtown Building C"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-78.680, 35.793],
+            [-78.679, 35.793],
+            [-78.679, 35.794],
+            [-78.680, 35.794],
+            [-78.680, 35.793]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "fallback-4",
+      "properties": {
+        "building": "retail",
+        "building:levels": "2",
+        "name": "Midtown Retail D"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-78.673, 35.796],
+            [-78.672, 35.796],
+            [-78.672, 35.797],
+            [-78.673, 35.797],
+            [-78.673, 35.796]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "fallback-5",
+      "properties": {
+        "building": "house",
+        "height": "8",
+        "name": "Midtown House E"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-78.685, 35.800],
+            [-78.684, 35.800],
+            [-78.684, 35.801],
+            [-78.685, 35.801],
+            [-78.685, 35.800]
+          ]
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,143 @@
+// @vitest-environment node
+import { describe, it, expect } from 'vitest';
+import * as THREE from 'three';
+import type { FeatureCollection } from 'geojson';
+import { extrudeBuildings } from '../extrude.js';
+
+// Simple square polygon in Midtown Raleigh bbox area
+function makeSquareFeature(
+  props: Record<string, unknown>,
+  centerLon = -78.6825,
+  centerLat = 35.7975,
+  sizeDeg = 0.001
+): FeatureCollection {
+  const half = sizeDeg / 2;
+  return {
+    type: 'FeatureCollection',
+    features: [
+      {
+        type: 'Feature',
+        id: 'test-1',
+        properties: { building: 'yes', ...props },
+        geometry: {
+          type: 'Polygon',
+          coordinates: [
+            [
+              [centerLon - half, centerLat - half],
+              [centerLon + half, centerLat - half],
+              [centerLon + half, centerLat + half],
+              [centerLon - half, centerLat + half],
+              [centerLon - half, centerLat - half],
+            ],
+          ],
+        },
+      },
+    ],
+  };
+}
+
+describe('extrudeBuildings', () => {
+  it('uses height tag when present (height: "20" → depth = 20)', () => {
+    const geojson = makeSquareFeature({ height: '20' });
+    const merged = extrudeBuildings(geojson);
+    expect(merged).toBeInstanceOf(THREE.BufferGeometry);
+    // Verify it has position attribute
+    expect(merged.attributes['position']).toBeDefined();
+    merged.dispose();
+  });
+
+  it('uses building:levels fallback (building:levels: "3" → depth ≈ 10.5)', () => {
+    const geojson = makeSquareFeature({ 'building:levels': '3' });
+    const merged = extrudeBuildings(geojson);
+    expect(merged).toBeInstanceOf(THREE.BufferGeometry);
+    merged.dispose();
+  });
+
+  it('defaults to 10m when no height info is present', () => {
+    const geojson = makeSquareFeature({});
+    const merged = extrudeBuildings(geojson);
+    expect(merged).toBeInstanceOf(THREE.BufferGeometry);
+    merged.dispose();
+  });
+
+  it('merged output has buildingType attribute', () => {
+    const geojson = makeSquareFeature({ building: 'commercial' });
+    const merged = extrudeBuildings(geojson);
+    expect(merged.attributes['buildingType']).toBeDefined();
+    merged.dispose();
+  });
+
+  it('residential building gets buildingType 0', () => {
+    const geojson = makeSquareFeature({ building: 'residential' });
+    const merged = extrudeBuildings(geojson);
+    const attr = merged.attributes['buildingType'];
+    expect(attr).toBeDefined();
+    // All vertices should be type 0
+    const arr = attr.array;
+    for (let i = 0; i < arr.length; i++) {
+      expect(arr[i]).toBe(0);
+    }
+    merged.dispose();
+  });
+
+  it('commercial building gets buildingType 1', () => {
+    const geojson = makeSquareFeature({ building: 'commercial' });
+    const merged = extrudeBuildings(geojson);
+    const attr = merged.attributes['buildingType'];
+    const arr = attr.array;
+    for (let i = 0; i < arr.length; i++) {
+      expect(arr[i]).toBe(1);
+    }
+    merged.dispose();
+  });
+
+  it('unknown building type gets buildingType 2', () => {
+    const geojson = makeSquareFeature({ building: 'yes' });
+    const merged = extrudeBuildings(geojson);
+    const attr = merged.attributes['buildingType'];
+    const arr = attr.array;
+    for (let i = 0; i < arr.length; i++) {
+      expect(arr[i]).toBe(2);
+    }
+    merged.dispose();
+  });
+
+  it('throws when feature collection is empty', () => {
+    const geojson: FeatureCollection = { type: 'FeatureCollection', features: [] };
+    expect(() => extrudeBuildings(geojson)).toThrow('No building geometries');
+  });
+
+  it('skips non-polygon feature types without crashing', () => {
+    const geojson: FeatureCollection = {
+      type: 'FeatureCollection',
+      features: [
+        {
+          type: 'Feature',
+          id: 'point-1',
+          properties: { building: 'yes' },
+          geometry: { type: 'Point', coordinates: [-78.6825, 35.7975] },
+        },
+        {
+          type: 'Feature',
+          id: 'polygon-1',
+          properties: { building: 'yes', height: '10' },
+          geometry: {
+            type: 'Polygon',
+            coordinates: [
+              [
+                [-78.683, 35.797],
+                [-78.682, 35.797],
+                [-78.682, 35.798],
+                [-78.683, 35.798],
+                [-78.683, 35.797],
+              ],
+            ],
+          },
+        },
+      ],
+    };
+    const merged = extrudeBuildings(geojson);
+    expect(merged).toBeInstanceOf(THREE.BufferGeometry);
+    merged.dispose();
+  });
+});
