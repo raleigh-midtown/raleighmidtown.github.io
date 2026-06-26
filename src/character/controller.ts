@@ -2,15 +2,15 @@ import * as THREE from 'three';
 import type { CharacterHandle } from './loader';
 import type { KeyboardState } from '../controls/keyboard';
 
-const MOVE_SPEED = 5; // m/s
-const CROSSFADE_DURATION = 0.3;
+const WALK_SPEED  = 5;            // m/s
+const RUN_SPEED   = 12;           // m/s
+const TURN_SPEED  = Math.PI * 1.8; // rad/s
+const CROSSFADE_DURATION = 0.2;
 
 export class CharacterController {
   private handle: CharacterHandle;
-  private isWalking = false;
-  // Reusable vectors to avoid per-frame allocations
-  private readonly moveDir = new THREE.Vector3();
-  private readonly worldDir = new THREE.Vector3();
+  private moveState: 'idle' | 'walk' | 'run' = 'idle';
+  private readonly forward = new THREE.Vector3();
 
   constructor(handle: CharacterHandle) {
     this.handle = handle;
@@ -19,67 +19,63 @@ export class CharacterController {
   update(
     delta: number,
     keyState: KeyboardState,
-    cameraYaw: number,
     cameraRigReady: boolean,
   ): void {
-    // Guard: do not move until camera rig has completed its first update
     if (!cameraRigReady) return;
 
     const mv = keyState.getMovementVector();
     const moving = keyState.isMoving();
+    const running = moving && keyState.isRunning();
+    const speed = running ? RUN_SPEED : WALK_SPEED;
 
     if (moving) {
-      // Rotate movement vector by camera yaw to get world-space direction
-      const sin = Math.sin(cameraYaw);
-      const cos = Math.cos(cameraYaw);
-      this.worldDir.set(
-        mv.x * cos + mv.y * sin,
-        0,
-        mv.x * (-sin) + mv.y * cos,
-      ).normalize();
-
-      // Apply velocity
-      this.handle.model.position.addScaledVector(this.worldDir, MOVE_SPEED * delta);
-
-      // Face movement direction
-      if (this.worldDir.lengthSq() > 0.001) {
-        const targetAngle = Math.atan2(this.worldDir.x, this.worldDir.z);
-        this.handle.model.rotation.y = targetAngle;
+      if (Math.abs(mv.x) > 0.01) {
+        this.handle.model.rotation.y -= mv.x * TURN_SPEED * delta;
       }
 
-      // Transition to walking
-      if (!this.isWalking) {
-        this.crossfadeTo('walk');
-        this.isWalking = true;
+      if (Math.abs(mv.y) > 0.01) {
+        const yaw = this.handle.model.rotation.y;
+        this.forward.set(-Math.sin(yaw), 0, -Math.cos(yaw));
+        this.handle.model.position.addScaledVector(this.forward, -mv.y * speed * delta);
+      }
+
+      const targetState = running ? 'run' : 'walk';
+      if (this.moveState !== targetState) {
+        this.crossfadeTo(targetState);
+        this.moveState = targetState;
       }
     } else {
-      // Transition to idle
-      if (this.isWalking) {
+      if (this.moveState !== 'idle') {
         this.crossfadeTo('idle');
-        this.isWalking = false;
+        this.moveState = 'idle';
       }
     }
 
-    // Advance animation mixer
     if (this.handle.mixer) {
       this.handle.mixer.update(delta);
     }
   }
 
-  private crossfadeTo(target: 'idle' | 'walk'): void {
-    if (!this.handle.mixer) return; // Guard: placeholder character has no mixer
+  /** Returns current character yaw (rotation around Y axis). */
+  getYaw(): number {
+    return this.handle.model.rotation.y;
+  }
 
-    const from = target === 'idle' ? this.handle.actions.walk : this.handle.actions.idle;
-    const to = target === 'idle' ? this.handle.actions.idle : this.handle.actions.walk;
+  private crossfadeTo(target: 'idle' | 'walk' | 'run'): void {
+    if (!this.handle.mixer) return;
 
+    const actions = this.handle.actions;
+    const to = target === 'idle' ? actions.idle
+             : target === 'walk' ? actions.walk
+             : actions.run;
     if (!to) return;
 
-    if (from) {
-      to.reset().play();
-      from.crossFadeTo(to, CROSSFADE_DURATION, true);
-    } else {
-      to.reset().play();
-    }
+    // Find whichever action is currently playing to cross-fade from it.
+    const candidates = [actions.idle, actions.walk, actions.run];
+    const from = candidates.find(a => a && a !== to && a.isRunning()) ?? null;
+
+    to.reset().play();
+    if (from) from.crossFadeTo(to, CROSSFADE_DURATION, true);
   }
 
   getPosition(): THREE.Vector3 {

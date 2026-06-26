@@ -9,7 +9,8 @@ export function createRenderer(canvas?: HTMLCanvasElement): THREE.WebGLRenderer 
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.shadowMap.enabled = false;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
   if (!canvas) {
     document.body.appendChild(renderer.domElement);

@@ -19,14 +19,15 @@ function makeHandle(withMixer = false): CharacterHandle {
   return {
     model,
     mixer,
-    actions: { idle: makeAction(), walk: makeAction() },
+    actions: { idle: makeAction(), walk: makeAction(), run: makeAction() },
     isPlaceholder: !withMixer,
   };
 }
 
-function makeKeyState(moving: boolean, x = 0, y = -1): KeyboardState {
+function makeKeyState(moving: boolean, x = 0, y = -1, running = false): KeyboardState {
   return {
     isMoving: () => moving,
+    isRunning: () => running,
     getMovementVector: () => new THREE.Vector2(x, y),
   } as unknown as KeyboardState;
 }
@@ -42,35 +43,35 @@ describe('CharacterController', () => {
 
   it('does not move when cameraRigReady is false', () => {
     const before = handle.model.position.clone();
-    ctrl.update(0.016, makeKeyState(true), 0, false);
+    ctrl.update(0.016, makeKeyState(true), false);
     expect(handle.model.position.distanceTo(before)).toBe(0);
   });
 
-  it('moves character forward (w key, yaw=0)', () => {
-    ctrl.update(0.016, makeKeyState(true, 0, -1), 0, true);
-    // yaw=0 → worldDir = (0, 0, -1), position.z decreases
+  it('moves character forward (w key)', () => {
+    // W key: mv.y = -1, model starts at rotation.y=0 so forward = (0,0,-1)
+    ctrl.update(0.016, makeKeyState(true, 0, -1), true);
     expect(handle.model.position.z).toBeLessThan(0);
   });
 
   it('advances mixer each frame', () => {
-    ctrl.update(0.016, makeKeyState(false), 0, true);
+    ctrl.update(0.016, makeKeyState(false), true);
     expect((handle.mixer!.update as ReturnType<typeof vi.fn>).mock.calls.length).toBe(1);
   });
 
   it('transitions to walk animation when movement starts', () => {
-    ctrl.update(0.016, makeKeyState(true, 0, -1), 0, true);
+    ctrl.update(0.016, makeKeyState(true, 0, -1), true);
     expect((handle.actions.walk!.reset as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(0);
   });
 
   it('transitions to idle animation when movement stops', () => {
-    ctrl.update(0.016, makeKeyState(true, 0, -1), 0, true);
-    ctrl.update(0.016, makeKeyState(false), 0, true);
+    ctrl.update(0.016, makeKeyState(true, 0, -1), true);
+    ctrl.update(0.016, makeKeyState(false), true);
     expect((handle.actions.idle!.reset as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(0);
   });
 
   it('does not crossfade if already in same state', () => {
-    ctrl.update(0.016, makeKeyState(false), 0, true);
-    ctrl.update(0.016, makeKeyState(false), 0, true);
+    ctrl.update(0.016, makeKeyState(false), true);
+    ctrl.update(0.016, makeKeyState(false), true);
     // idle reset should only have been called once (first transition)
     expect((handle.actions.idle!.reset as ReturnType<typeof vi.fn>).mock.calls.length).toBe(0);
   });
@@ -82,6 +83,6 @@ describe('CharacterController', () => {
   it('skips crossfade gracefully when mixer is null (placeholder)', () => {
     const ph = makeHandle(false);
     const phCtrl = new CharacterController(ph);
-    expect(() => phCtrl.update(0.016, makeKeyState(true, 0, -1), 0, true)).not.toThrow();
+    expect(() => phCtrl.update(0.016, makeKeyState(true, 0, -1), true)).not.toThrow();
   });
 });

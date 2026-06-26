@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 
-const FORWARD_KEYS = new Set(['w', 'arrowup']);
+const FORWARD_KEYS  = new Set(['w', 'arrowup']);
 const BACKWARD_KEYS = new Set(['s', 'arrowdown']);
-const LEFT_KEYS = new Set(['a', 'arrowleft']);
-const RIGHT_KEYS = new Set(['d', 'arrowright']);
+const LEFT_KEYS     = new Set(['a', 'arrowleft']);
+const RIGHT_KEYS    = new Set(['d', 'arrowright']);
+const RUN_KEYS      = new Set(['shift']);
 
 export class KeyboardState {
   private pressed = new Set<string>();
@@ -15,6 +16,13 @@ export class KeyboardState {
     window.addEventListener('keyup', (e) => {
       this.pressed.delete(e.key.toLowerCase());
     });
+  }
+
+  isRunning(): boolean {
+    for (const key of this.pressed) {
+      if (RUN_KEYS.has(key)) return true;
+    }
+    return false;
   }
 
   isMoving(): boolean {

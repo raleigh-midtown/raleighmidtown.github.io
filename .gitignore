@@ -1,1 +1,5 @@
-.compound-engineering/*.local.yaml
+.compound-engineering/
+node_modules/
+docs/
+STRATEGY.md
+.claude

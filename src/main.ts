@@ -1,8 +1,7 @@
 import * as THREE from 'three';
 import { createRenderer, updateCameraAspect } from './scene/renderer';
 import { setupEnvironment } from './scene/environment';
-import { fetchBuildings } from './osm/fetch';
-import { extrudeBuildings } from './osm/extrude';
+import { buildMidtownScene } from './scene/midtownScene';
 import { loadCharacter } from './character/loader';
 import { CharacterController } from './character/controller';
 import { CameraRig } from './scene/cameraRig';
@@ -49,20 +48,22 @@ if (navigator.maxTouchPoints === 0) {
 
 // Async startup: load buildings and character, then start loop
 async function init(): Promise<void> {
-  // Load OSM buildings
-  let buildingMesh: THREE.Mesh | null = null;
-  try {
-    const geojson = await fetchBuildings();
-    const geo = extrudeBuildings(geojson);
-    const mat = new THREE.MeshStandardMaterial({ color: 0x8899aa, roughness: 0.8 });
-    buildingMesh = new THREE.Mesh(geo, mat);
-    scene.add(buildingMesh);
-    collision.build(buildingMesh);
-  } catch (e) {
-    console.warn('Building load failed:', e);
+  // Build Midtown Raleigh scene from inline data
+  const buildingMeshes = buildMidtownScene(scene);
+  if (buildingMeshes.length > 0) {
+    collision.build(...buildingMeshes);
+    cameraRig.setRaycastFn((from, to) => collision.raycastTo(from, to));
   }
 
-  // Load character
+  // Toast: show building count
+  const toast = document.getElementById('toast');
+  if (toast) {
+    toast.textContent = `${buildingMeshes.length} buildings loaded`;
+    toast.classList.remove('hidden');
+    setTimeout(() => toast.classList.add('hidden'), 4000);
+  }
+
+  // Load character — loader normalises GLB to ≈1.8 m; placeholder is already that height
   const handle = await loadCharacter(scene);
   handle.model.position.set(0, 0, 0);
   const controller = new CharacterController(handle);
@@ -82,16 +83,15 @@ async function init(): Promise<void> {
     timer.update();
     const delta = Math.min(timer.getDelta(), 0.1); // cap at 100ms to avoid tunnelling
 
-    // U5: character movement (uses previous frame's camera yaw — intentional)
-    const yaw = gyro.getCameraYaw() ?? cameraRig.getCameraYaw();
-    controller.update(delta, keyboard, yaw, cameraRig.ready);
+    // U5: character turns with A/D, moves forward/back with W/S
+    controller.update(delta, keyboard, cameraRig.ready);
 
-    // Apply gyro tilt as forward movement on mobile
+    // Gyro tilt → forward/back movement on mobile
     if (gyro.isActive()) {
       const tilt = gyro.getTiltForward();
       if (Math.abs(tilt) > 0.01) {
-        // Simulate forward/backward key by directly nudging position along camera direction
-        const dir = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
+        const yaw = controller.getYaw();
+        const dir = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
         handle.model.position.addScaledVector(dir, tilt * 5 * delta);
       }
     }
@@ -100,8 +100,8 @@ async function init(): Promise<void> {
     const correction = collision.resolveCollision(handle.model.position, 0.4, 0.6);
     handle.model.position.add(correction);
 
-    // U6: camera follows character
-    cameraRig.update(controller.getPosition(), delta);
+    // U6: camera swings behind character's facing direction
+    cameraRig.update(controller.getPosition(), delta, controller.getYaw());
 
     renderer.render(scene, camera);
   }

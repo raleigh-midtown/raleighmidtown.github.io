@@ -1,0 +1,187 @@
+{
+  "area": "Midtown Raleigh / North Hills District, NC",
+  "schema_note": "This file extends buildings.json with the rest of the scene: roads, intersections (incl. traffic lights), parks, and shops. All features share the SAME local_xz coordinate system as buildings.json (district centroid at 35.8390, -78.6420 = local (0,0), units in meters, +x east-ish, +z north-ish). Load both files and place everything in one scene using local_xz directly.",
+  "origin_lat": 35.8390,
+  "origin_lng": -78.6420,
+
+  "roads": [
+    {
+      "id": "six_forks_rd",
+      "name": "Six Forks Road",
+      "type": "arterial",
+      "lanes_est": 4,
+      "width_m_est": 18,
+      "has_sidewalk": true,
+      "path_xz": [
+        { "x": -260, "z": -550 },
+        { "x": -230, "z": -300 },
+        { "x": -180, "z": 0 },
+        { "x": -140, "z": 300 },
+        { "x": -100, "z": 600 },
+        { "x": -60, "z": 900 }
+      ],
+      "notes": "Main north-south spine through the district. Slight eastward curve as it goes north -- don't make it a perfectly straight line."
+    },
+    {
+      "id": "lassiter_mill_rd",
+      "name": "Lassiter Mill Road",
+      "type": "collector",
+      "lanes_est": 2,
+      "width_m_est": 12,
+      "has_sidewalk": true,
+      "path_xz": [
+        { "x": -400, "z": -50 },
+        { "x": -200, "z": -60 },
+        { "x": 0, "z": -73 },
+        { "x": 200, "z": -100 },
+        { "x": 400, "z": -150 }
+      ],
+      "notes": "Roughly east-west, crosses Six Forks Rd near the retail core."
+    },
+    {
+      "id": "park_at_north_hills_st",
+      "name": "Park at North Hills Street",
+      "type": "local",
+      "lanes_est": 2,
+      "width_m_est": 10,
+      "has_sidewalk": true,
+      "path_xz": [
+        { "x": -210, "z": -280 },
+        { "x": -180, "z": -200 },
+        { "x": -150, "z": -100 },
+        { "x": -130, "z": 0 }
+      ],
+      "notes": "Local access road curving past the office tower district, feeds into Six Forks Rd."
+    },
+    {
+      "id": "st_albans_dr",
+      "name": "St Albans Drive",
+      "type": "local",
+      "lanes_est": 2,
+      "width_m_est": 10,
+      "has_sidewalk": true,
+      "path_xz": [
+        { "x": 100, "z": -200 },
+        { "x": 250, "z": -180 },
+        { "x": 400, "z": -150 }
+      ],
+      "notes": "Local connector through the innovation district, feeds into Lassiter Mill Rd."
+    },
+    {
+      "id": "midtown_internal_loop",
+      "name": "Midtown Internal Loop (generic walkable lane)",
+      "type": "local_pedestrian_priority",
+      "lanes_est": 1,
+      "width_m_est": 8,
+      "has_sidewalk": true,
+      "path_xz": [
+        { "x": -73, "z": -163 },
+        { "x": 20, "z": -120 },
+        { "x": 100, "z": -50 },
+        { "x": 50, "z": 50 },
+        { "x": -73, "z": -163 }
+      ],
+      "notes": "Closed loop -- represents the walkable retail core internal streets (lower speed, wider sidewalks, on-street parking). Use a different road material/width than the arterials."
+    }
+  ],
+
+  "intersections": [
+    {
+      "id": "six_forks_x_lassiter_mill",
+      "local_xz": { "x": -180, "z": -73 },
+      "roads": ["six_forks_rd", "lassiter_mill_rd"],
+      "has_traffic_light": true,
+      "light_type": "standard_4way",
+      "notes": "Major intersection -- main signal-controlled crossing in the district."
+    },
+    {
+      "id": "six_forks_x_park_at_north_hills",
+      "local_xz": { "x": -150, "z": -100 },
+      "roads": ["six_forks_rd", "park_at_north_hills_st"],
+      "has_traffic_light": true,
+      "light_type": "standard_4way",
+      "notes": "Signal at the office tower district entrance."
+    },
+    {
+      "id": "lassiter_mill_x_st_albans",
+      "local_xz": { "x": 200, "z": -100 },
+      "roads": ["lassiter_mill_rd", "st_albans_dr"],
+      "has_traffic_light": true,
+      "light_type": "standard_4way",
+      "notes": "Signal near the innovation district."
+    },
+    {
+      "id": "park_at_north_hills_x_loop",
+      "local_xz": { "x": -73, "z": -163 },
+      "roads": ["park_at_north_hills_st", "midtown_internal_loop"],
+      "has_traffic_light": false,
+      "light_type": "stop_sign",
+      "notes": "Minor junction into the retail core loop -- stop sign rather than a signal, matches the lower-speed pedestrian character there."
+    }
+  ],
+
+  "parks": [
+    {
+      "id": "north_hills_green_plaza",
+      "name": "North Hills Central Plaza/Green",
+      "type": "urban_plaza_green",
+      "local_xz": { "x": -73, "z": -163 },
+      "footprint_dims_est_m": { "width": 60, "depth": 40 },
+      "rotation_deg_est": 0,
+      "features": ["lawn", "seating", "small_trees", "fountain_or_feature"],
+      "role_in_scene": "central_gathering_space",
+      "notes": "Sits at the heart of the walkable retail core, surrounded by the shop cluster. Good spot for a focal/decorative element in the scene."
+    }
+  ],
+
+  "shops": [
+    {
+      "id": "shop_block_a",
+      "name": "Retail Block A (generic storefronts)",
+      "type": "retail_storefront_row",
+      "local_xz": { "x": -150, "z": -200 },
+      "footprint_dims_est_m": { "width": 40, "depth": 15 },
+      "rotation_deg_est": 5,
+      "stories_est": 2,
+      "facade": "varied_storefronts_awnings",
+      "role_in_scene": "street_frontage",
+      "notes": "Row of 4-6 small attached shopfronts facing the internal loop road."
+    },
+    {
+      "id": "shop_block_b",
+      "name": "Retail Block B (generic storefronts)",
+      "type": "retail_storefront_row",
+      "local_xz": { "x": 30, "z": -180 },
+      "footprint_dims_est_m": { "width": 50, "depth": 15 },
+      "rotation_deg_est": -8,
+      "stories_est": 1,
+      "facade": "varied_storefronts_awnings",
+      "role_in_scene": "street_frontage",
+      "notes": "Single-story strip facing the plaza, slightly angled to the loop road."
+    },
+    {
+      "id": "anchor_retail_block",
+      "name": "Anchor Retail/Department Store Block",
+      "type": "anchor_retail",
+      "local_xz": { "x": -40, "z": -100 },
+      "footprint_dims_est_m": { "width": 70, "depth": 45 },
+      "rotation_deg_est": 0,
+      "stories_est": 2,
+      "facade": "large_glass_storefront",
+      "role_in_scene": "anchor_block",
+      "notes": "Larger single retail volume (department-store scale) bordering the green plaza."
+    },
+    {
+      "id": "restaurant_row",
+      "name": "Restaurant Row",
+      "type": "retail_storefront_row",
+      "local_xz": { "x": 80, "z": -30 },
+      "footprint_dims_est_m": { "width": 45, "depth": 18 },
+      "rotation_deg_est": 10,
+      "stories_est": 1,
+      "facade": "varied_storefronts_patios",
+      "role_in_scene": "street_frontage",
+      "notes": "Ground-floor restaurants with small outdoor patio areas facing the loop road -- consider adding small umbrella/patio props here."
+    }
+  ]
+}

@@ -1,82 +1,102 @@
 import * as THREE from 'three';
 import { MeshBVH, acceleratedRaycast, INTERSECTED, NOT_INTERSECTED } from 'three-mesh-bvh';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
-// Patch THREE.Mesh.prototype.raycast at module load for accelerated raycasting
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
 
 export class CollisionSystem {
   private bvh: MeshBVH | null = null;
 
-  /**
-   * Call once after building scene geometry is ready.
-   */
-  build(buildingMesh: THREE.Mesh): void {
-    this.bvh = new MeshBVH(buildingMesh.geometry);
+  /** Accept one or more meshes — merges their geometries into a single BVH in world space. */
+  build(...meshes: THREE.Mesh[]): void {
+    // Force world matrices to be current (meshes may not have been rendered yet).
+    meshes.forEach(m => m.updateWorldMatrix(true, false));
+    // Clone each geometry and bake the mesh's world transform into vertex positions
+    // so the BVH operates in world space and collision queries against world-space
+    // character positions are correct.
+    const geos = meshes.map(m => {
+      const geo = (m.geometry as THREE.BufferGeometry).clone();
+      geo.applyMatrix4(m.matrixWorld);
+      return geo;
+    });
+    const merged = geos.length === 1 ? geos[0] : mergeGeometries(geos, false);
+    if (merged) this.bvh = new MeshBVH(merged);
   }
 
   /**
-   * Resolve character capsule out of buildings.
-   * Runs 3 iterative shapecast passes.
-   * Returns the resolved position delta that should be added to the character.
+   * Cast a ray from `from` toward `to` and return the hit distance, or null if clear.
+   * Used by the camera rig to pull back when a wall is between character and camera.
+   */
+  raycastTo(from: THREE.Vector3, to: THREE.Vector3): number | null {
+    if (!this.bvh) return null;
+    const dir = new THREE.Vector3().subVectors(to, from);
+    const maxDist = dir.length();
+    if (maxDist < 0.01) return null;
+    dir.divideScalar(maxDist);
+    const ray = new THREE.Ray(from, dir);
+    const hit = this.bvh.raycastFirst(ray, THREE.DoubleSide);
+    if (hit && hit.distance <= maxDist) return hit.distance;
+    return null;
+  }
+
+  /**
+   * Resolve a vertical capsule out of building geometry.
+   * Up to 5 iterations — each finds the single deepest penetration and pushes out.
+   * Only horizontal (XZ) correction is applied so the character stays grounded.
    */
   resolveCollision(
     characterPosition: THREE.Vector3,
     capsuleRadius: number,
     capsuleHalfHeight: number,
   ): THREE.Vector3 {
-    if (this.bvh === null) {
-      return new THREE.Vector3();
-    }
+    if (!this.bvh) return new THREE.Vector3();
 
     const totalCorrection = new THREE.Vector3();
-    const currentPosition = characterPosition.clone();
+    // Test sphere at mid-capsule height
+    const sphereCenter = new THREE.Vector3(
+      characterPosition.x,
+      characterPosition.y + capsuleHalfHeight,
+      characterPosition.z,
+    );
+    const testRadius = capsuleRadius + 0.05; // small margin
 
-    // 3 iterative passes for stable collision resolution
-    for (let pass = 0; pass < 3; pass++) {
-      // Approximate capsule with a sphere at the top of the capsule
-      const sphereCenter = new THREE.Vector3(
-        currentPosition.x,
-        currentPosition.y + capsuleHalfHeight,
-        currentPosition.z,
-      );
-      const sphere = new THREE.Sphere(sphereCenter, capsuleRadius);
-
-      const passCorrection = new THREE.Vector3();
+    for (let pass = 0; pass < 5; pass++) {
+      let maxDepth = 0;
+      const maxNormal = new THREE.Vector3();
 
       this.bvh.shapecast({
         intersectsBounds: (box) => {
-          // Broad phase: check if sphere intersects the BVH node's bounding box
-          const closestPoint = new THREE.Vector3();
-          box.clampPoint(sphereCenter, closestPoint);
-          const distSq = closestPoint.distanceToSquared(sphereCenter);
-          return distSq <= capsuleRadius * capsuleRadius ? INTERSECTED : NOT_INTERSECTED;
+          const closest = new THREE.Vector3();
+          box.clampPoint(sphereCenter, closest);
+          return closest.distanceToSquared(sphereCenter) <= testRadius * testRadius
+            ? INTERSECTED
+            : NOT_INTERSECTED;
         },
         intersectsTriangle: (tri) => {
-          // Narrow phase: compute penetration and accumulate correction
-          const closestPoint = new THREE.Vector3();
-          tri.closestPointToPoint(sphereCenter, closestPoint);
-          const dist = closestPoint.distanceTo(sphereCenter);
+          const closest = new THREE.Vector3();
+          tri.closestPointToPoint(sphereCenter, closest);
+          const toCenter = new THREE.Vector3().subVectors(sphereCenter, closest);
+          const dist = toCenter.length();
 
-          if (dist < capsuleRadius && dist > 0) {
-            // Push out along the normal from triangle surface to sphere center
-            const penetrationDepth = capsuleRadius - dist;
-            const correction = sphereCenter.clone().sub(closestPoint).normalize().multiplyScalar(penetrationDepth);
-            passCorrection.add(correction);
+          if (dist < testRadius && dist > 1e-6) {
+            const depth = testRadius - dist;
+            if (depth > maxDepth) {
+              maxDepth = depth;
+              maxNormal.copy(toCenter).normalize();
+            }
           }
-
-          // Return false to continue traversal (don't early-exit)
-          return false;
+          return false; // continue traversal
         },
       });
 
-      if (passCorrection.lengthSq() > 0) {
-        totalCorrection.add(passCorrection);
-        currentPosition.add(passCorrection);
-        sphere.center.copy(currentPosition).y += capsuleHalfHeight;
-      }
+      if (maxDepth < 1e-5) break; // no more penetration
 
-      // Unused variable fix: sphere is used in intersectsBounds via closure
-      void sphere;
+      // Push out along deepest triangle normal; zero Y to stay on ground
+      const push = maxNormal.clone().multiplyScalar(maxDepth);
+      push.y = 0;
+
+      sphereCenter.add(push);
+      totalCorrection.add(push);
     }
 
     return totalCorrection;

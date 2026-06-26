@@ -73,6 +73,18 @@ out body;
 out skel qt;`;
 }
 
+function buildRoadsQuery(): string {
+  const { south, west, north, east } = BBOX;
+  // Only drivable + residential roads; skip footways/paths to keep payload small
+  return `[out:json][timeout:25];
+(
+  way["highway"~"^(motorway|trunk|primary|secondary|tertiary|residential|unclassified|service|living_street)$"](${south},${west},${north},${east});
+);
+out body;
+>;
+out skel qt;`;
+}
+
 async function fetchFromOverpass(): Promise<FeatureCollection> {
   const osmtogeojson = (await import('osmtogeojson')).default;
   const query = buildOverpassQuery();
@@ -86,11 +98,9 @@ async function fetchFromOverpass(): Promise<FeatureCollection> {
     }
 
     try {
-      const response = await fetch(OVERPASS_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `data=${encodeURIComponent(query)}`,
-      });
+      // Use GET — Overpass rejects POST with 406 in some configurations
+      const url = `${OVERPASS_URL}?data=${encodeURIComponent(query)}`;
+      const response = await fetch(url, { method: 'GET' });
 
       if (!response.ok) {
         throw new Error(`Overpass HTTP ${response.status}`);
@@ -120,6 +130,38 @@ async function loadFallback(): Promise<FeatureCollection> {
     throw new Error(`Failed to load fallback GeoJSON: HTTP ${response.status}`);
   }
   return response.json() as Promise<FeatureCollection>;
+}
+
+/**
+ * Fetch road (highway) ways from Overpass. Returns null on any failure.
+ * Non-critical — caller should render roads only when this resolves successfully.
+ */
+export async function fetchRoads(): Promise<FeatureCollection | null> {
+  const cacheKey = 'midtown-roads-cache';
+  try {
+    const raw = localStorage.getItem(cacheKey);
+    if (raw) {
+      const entry = JSON.parse(raw) as CacheEntry;
+      if (Date.now() - entry.timestamp <= CACHE_TTL_MS) return entry.data;
+      localStorage.removeItem(cacheKey);
+    }
+  } catch { /* ignore */ }
+
+  try {
+    const osmtogeojson = (await import('osmtogeojson')).default;
+    const url = `${OVERPASS_URL}?data=${encodeURIComponent(buildRoadsQuery())}`;
+    const res = await fetch(url, { method: 'GET' });
+    if (!res.ok) throw new Error(`Overpass roads HTTP ${res.status}`);
+    const osmData = await res.json();
+    const geojson = osmtogeojson(osmData);
+    try {
+      localStorage.setItem(cacheKey, JSON.stringify({ data: geojson, timestamp: Date.now() }));
+    } catch { /* quota */ }
+    return geojson;
+  } catch (err) {
+    console.warn('[Roads] Overpass fetch failed:', err);
+    return null;
+  }
 }
 
 /**

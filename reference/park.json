@@ -1,0 +1,152 @@
+{
+  "area": "Midtown Park, North Hills, Raleigh NC",
+  "schema_note": "Same local_xz coordinate system as buildings.json / roads.json (origin 35.8390, -78.6420). This park is the central green space referenced by nearby residents as 'midtown park downstairs' -- it's the social/visual anchor of the retail core, so it's broken out into zones + individual features rather than one big footprint box.",
+  "accuracy_note": "Real, frequently-referenced park in the district (residents describe events happening there). Exact internal layout (path curves, feature positions) is a reasonable approximation for scene-building, not a surveyed park map.",
+  "park": {
+    "id": "midtown_park",
+    "name": "Midtown Park",
+    "local_xz": { "x": -73, "z": -163 },
+    "footprint_dims_est_m": { "width": 80, "depth": 55 },
+    "rotation_deg_est": 0,
+    "role_in_scene": "central_gathering_space / visual_anchor",
+    "notes": "Sits at the heart of the walkable retail core, ringed by shop blocks and overlooked by The Eastern residential tower. Used for resident events -- design it to read as a real gathering space (open lawn + seating + a feature element), not just decorative grass."
+  },
+
+  "zones": [
+    {
+      "id": "central_lawn",
+      "name": "Central Lawn",
+      "type": "open_lawn",
+      "local_xz": { "x": -73, "z": -163 },
+      "footprint_dims_est_m": { "width": 35, "depth": 25 },
+      "rotation_deg_est": 0,
+      "surface": "grass_or_stylized_green_plane",
+      "notes": "Core open event/gathering space. Keep this clear of props -- this is where 'events' happen, so it should read as flexible open space."
+    },
+    {
+      "id": "shaded_grove",
+      "name": "Shaded Grove",
+      "type": "tree_cluster",
+      "local_xz": { "x": -100, "z": -185 },
+      "footprint_dims_est_m": { "width": 20, "depth": 18 },
+      "rotation_deg_est": 0,
+      "surface": "mulch_or_dark_groundcover",
+      "notes": "Cluster of 6-10 low-poly trees with denser canopy, offset from the open lawn. Good spot for scattered bench props."
+    },
+    {
+      "id": "plaza_promenade",
+      "name": "Plaza Promenade",
+      "type": "hardscape_plaza",
+      "local_xz": { "x": -50, "z": -140 },
+      "footprint_dims_est_m": { "width": 25, "depth": 12 },
+      "rotation_deg_est": 5,
+      "surface": "paved_stone_or_concrete",
+      "notes": "Hard-surface strip connecting the park to the surrounding shop fronts -- where outdoor dining/seating from nearby restaurants spills into."
+    },
+    {
+      "id": "play_lawn_edge",
+      "name": "Play/Recreation Edge",
+      "type": "soft_recreation_strip",
+      "local_xz": { "x": -45, "z": -185 },
+      "footprint_dims_est_m": { "width": 18, "depth": 15 },
+      "rotation_deg_est": -10,
+      "surface": "grass",
+      "notes": "Smaller secondary lawn strip, slightly separated from the main central lawn -- good for a couple of casual seating/picnic props."
+    }
+  ],
+
+  "paths": [
+    {
+      "id": "park_main_diagonal_path",
+      "name": "Main Diagonal Path",
+      "width_m_est": 3,
+      "surface": "paved_walkway",
+      "path_xz": [
+        { "x": -105, "z": -190 },
+        { "x": -73, "z": -163 },
+        { "x": -40, "z": -140 },
+        { "x": -10, "z": -120 }
+      ],
+      "notes": "Primary cut-through path connecting the shaded grove corner to the plaza promenade, passing along the lawn's edge."
+    },
+    {
+      "id": "park_perimeter_loop",
+      "name": "Perimeter Loop Path",
+      "width_m_est": 2.5,
+      "surface": "paved_walkway",
+      "path_xz": [
+        { "x": -113, "z": -190 },
+        { "x": -90, "z": -135 },
+        { "x": -35, "z": -130 },
+        { "x": -20, "z": -185 },
+        { "x": -60, "z": -200 },
+        { "x": -113, "z": -190 }
+      ],
+      "notes": "Closed loop ringing the whole park footprint -- corresponds to where Midtown Park Walk (in roads.json) runs along the park's outer edge. Keep this path's curve roughly matching that road's path for visual consistency."
+    },
+    {
+      "id": "park_short_connector_to_plaza",
+      "name": "Lawn-to-Plaza Connector",
+      "width_m_est": 2.5,
+      "surface": "paved_walkway",
+      "path_xz": [
+        { "x": -73, "z": -163 },
+        { "x": -60, "z": -150 },
+        { "x": -50, "z": -140 }
+      ],
+      "notes": "Short connector from the central lawn directly into the plaza promenade hardscape."
+    }
+  ],
+
+  "features": [
+    {
+      "id": "park_centerpiece_fountain",
+      "name": "Centerpiece Fountain/Feature",
+      "type": "fountain_or_sculpture",
+      "local_xz": { "x": -73, "z": -163 },
+      "footprint_dims_est_m": { "width": 6, "depth": 6 },
+      "role_in_scene": "focal_point",
+      "notes": "Single decorative focal element at the park's center -- a small circular fountain or sculpture. This is the one 'hero prop' in the park; everything else should be secondary to it visually."
+    },
+    {
+      "id": "lawn_seating_cluster_a",
+      "name": "Lawn Seating Cluster A",
+      "type": "bench_group",
+      "local_xz": { "x": -90, "z": -150 },
+      "count_est": 4,
+      "notes": "Group of 4 benches facing the central lawn, near the shaded grove edge."
+    },
+    {
+      "id": "lawn_seating_cluster_b",
+      "name": "Lawn Seating Cluster B",
+      "type": "bench_group",
+      "local_xz": { "x": -50, "z": -175 },
+      "count_est": 3,
+      "notes": "Smaller bench group near the play/recreation edge zone."
+    },
+    {
+      "id": "plaza_string_lights",
+      "name": "Plaza String Lights",
+      "type": "overhead_lighting",
+      "local_xz": { "x": -50, "z": -140 },
+      "footprint_dims_est_m": { "width": 25, "depth": 12 },
+      "notes": "Overhead string lights spanning the plaza promenade -- nice warm emissive detail for a low-poly evening render."
+    },
+    {
+      "id": "park_perimeter_planters",
+      "name": "Perimeter Planters",
+      "type": "planter_row",
+      "placement": "along_perimeter_loop_path",
+      "count_est": 10,
+      "notes": "Small repeated planter boxes lining the perimeter loop path -- good InstancedMesh candidate, same approach as the building window grids."
+    },
+    {
+      "id": "park_lawn_trees_scattered",
+      "name": "Scattered Lawn Trees",
+      "type": "tree_scattered",
+      "placement": "edges_of_central_lawn",
+      "count_est": 6,
+      "notes": "A handful of individual trees along the lawn's edges (distinct from the denser shaded_grove cluster) -- lower density, more spread out."
+    }
+  ]
+}

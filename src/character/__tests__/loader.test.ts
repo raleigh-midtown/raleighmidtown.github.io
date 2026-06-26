@@ -25,7 +25,7 @@ describe('loadCharacter', () => {
     }));
   });
 
-  it('returns isPlaceholder=true, mixer=null, model is Mesh on load failure', async () => {
+  it('returns isPlaceholder=true, mixer=null, model is Object3D on load failure', async () => {
     mockLoad.mockImplementation(
       (
         _url: string,
@@ -41,7 +41,7 @@ describe('loadCharacter', () => {
 
     expect(handle.isPlaceholder).toBe(true);
     expect(handle.mixer).toBeNull();
-    expect(handle.model).toBeInstanceOf(THREE.Mesh);
+    expect(handle.model).toBeInstanceOf(THREE.Object3D);
     expect(handle.actions.idle).toBeNull();
     expect(handle.actions.walk).toBeNull();
   });
@@ -77,7 +77,7 @@ describe('loadCharacter', () => {
     expect(handle.actions.walk).not.toBeNull();
   });
 
-  it('placeholder mesh has non-zero bounding box', async () => {
+  it('placeholder model has children (humanoid group)', async () => {
     mockLoad.mockImplementation(
       (
         _url: string,
@@ -91,15 +91,8 @@ describe('loadCharacter', () => {
 
     const handle = await loadCharacter(scene);
 
-    expect(handle.model).toBeInstanceOf(THREE.Mesh);
-    const mesh = handle.model as THREE.Mesh;
-
-    mesh.geometry.computeBoundingBox();
-    const bbox = mesh.geometry.boundingBox;
-
-    expect(bbox).not.toBeNull();
-    expect(bbox!.max.x - bbox!.min.x).toBeGreaterThan(0);
-    expect(bbox!.max.y - bbox!.min.y).toBeGreaterThan(0);
-    expect(bbox!.max.z - bbox!.min.z).toBeGreaterThan(0);
+    // Placeholder is now a Group with body part meshes as children
+    expect(handle.model).toBeInstanceOf(THREE.Object3D);
+    expect(handle.model.children.length).toBeGreaterThan(0);
   });
 });

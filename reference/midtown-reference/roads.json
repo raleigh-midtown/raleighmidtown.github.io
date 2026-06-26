@@ -1,0 +1,199 @@
+{
+  "area": "Midtown Raleigh / North Hills District, NC",
+  "schema_note": "Shares the same local_xz coordinate system as buildings.json (origin at 35.8390, -78.6420). Each road has a 'label' block describing how/where to render its street-name signage in the scene, separate from the geometry path.",
+  "accuracy_note": "Road paths are reasonable approximations of real street layout/curvature, not GIS-surveyed data. Real street names are accurate; exact curve points are estimated.",
+  "origin_lat": 35.8390,
+  "origin_lng": -78.6420,
+
+  "roads": [
+    {
+      "id": "six_forks_rd",
+      "name": "Six Forks Road",
+      "short_label": "Six Forks Rd",
+      "type": "arterial",
+      "lanes_est": 4,
+      "width_m_est": 18,
+      "has_sidewalk": true,
+      "speed_character": "moderate_through_traffic",
+      "path_xz": [
+        { "x": -260, "z": -550 },
+        { "x": -230, "z": -300 },
+        { "x": -180, "z": 0 },
+        { "x": -140, "z": 300 },
+        { "x": -100, "z": 600 },
+        { "x": -60, "z": 900 }
+      ],
+      "label": {
+        "text": "Six Forks Rd",
+        "placement": "repeat_along_path",
+        "interval_m": 200,
+        "sign_type": "elevated_street_sign_at_intersections_plus_painted_pavement_marking",
+        "notes": "Primary spine -- label should appear at every intersection it passes through, plus optionally a painted/decal road name at 1-2 mid-block points."
+      },
+      "notes": "Main north-south spine through the district. Slight eastward curve as it goes north."
+    },
+    {
+      "id": "lassiter_mill_rd",
+      "name": "Lassiter Mill Road",
+      "short_label": "Lassiter Mill Rd",
+      "type": "collector",
+      "lanes_est": 2,
+      "width_m_est": 12,
+      "has_sidewalk": true,
+      "speed_character": "moderate",
+      "path_xz": [
+        { "x": -400, "z": -50 },
+        { "x": -200, "z": -60 },
+        { "x": 0, "z": -73 },
+        { "x": 200, "z": -100 },
+        { "x": 400, "z": -150 }
+      ],
+      "label": {
+        "text": "Lassiter Mill Rd",
+        "placement": "at_intersections_only",
+        "sign_type": "elevated_street_sign",
+        "notes": "Roughly east-west, crosses Six Forks Rd near the retail core -- label both sides of that crossing."
+      },
+      "notes": "Passes the RH Raleigh showroom and Village Tavern frontage in real life."
+    },
+    {
+      "id": "park_at_north_hills_st",
+      "name": "Park at North Hills Street",
+      "short_label": "Park at N Hills St",
+      "type": "local",
+      "lanes_est": 2,
+      "width_m_est": 10,
+      "has_sidewalk": true,
+      "speed_character": "slow_local",
+      "path_xz": [
+        { "x": -210, "z": -280 },
+        { "x": -180, "z": -200 },
+        { "x": -150, "z": -100 },
+        { "x": -130, "z": 0 }
+      ],
+      "label": {
+        "text": "Park at N Hills St",
+        "placement": "at_intersections_only",
+        "sign_type": "ground_level_street_sign",
+        "notes": "Local access road curving past the office tower district."
+      },
+      "notes": "Feeds into Six Forks Rd; this is the street several apartment complexes use as their listed address."
+    },
+    {
+      "id": "st_albans_dr",
+      "name": "St Albans Drive",
+      "short_label": "St Albans Dr",
+      "type": "local",
+      "lanes_est": 2,
+      "width_m_est": 10,
+      "has_sidewalk": true,
+      "speed_character": "slow_local",
+      "path_xz": [
+        { "x": 100, "z": -200 },
+        { "x": 250, "z": -180 },
+        { "x": 400, "z": -150 }
+      ],
+      "label": {
+        "text": "St Albans Dr",
+        "placement": "at_intersections_only",
+        "sign_type": "ground_level_street_sign",
+        "notes": "Local connector through the innovation district."
+      },
+      "notes": "Feeds into Lassiter Mill Rd."
+    },
+    {
+      "id": "dartmouth_rd",
+      "name": "Dartmouth Road",
+      "short_label": "Dartmouth Rd",
+      "type": "local",
+      "lanes_est": 2,
+      "width_m_est": 9,
+      "has_sidewalk": true,
+      "speed_character": "slow_local",
+      "path_xz": [
+        { "x": 150, "z": -120 },
+        { "x": 200, "z": -50 },
+        { "x": 230, "z": 20 }
+      ],
+      "label": {
+        "text": "Dartmouth Rd",
+        "placement": "at_intersections_only",
+        "sign_type": "ground_level_street_sign",
+        "notes": "Quiet residential-feeling local street near The Dartmouth North Hills apartments."
+      },
+      "notes": "Connects the office cluster area to nearby residential midrises."
+    },
+    {
+      "id": "midtown_internal_loop",
+      "name": "Midtown Park Walk (internal pedestrian-priority loop)",
+      "short_label": "Midtown Park Walk",
+      "type": "local_pedestrian_priority",
+      "lanes_est": 1,
+      "width_m_est": 8,
+      "has_sidewalk": true,
+      "speed_character": "very_slow_shared_pedestrian",
+      "path_xz": [
+        { "x": -73, "z": -163 },
+        { "x": 20, "z": -120 },
+        { "x": 100, "z": -50 },
+        { "x": 50, "z": 50 },
+        { "x": -73, "z": -163 }
+      ],
+      "label": {
+        "text": "Midtown Park Walk",
+        "placement": "decorative_only",
+        "sign_type": "small_pedestrian_wayfinding_sign",
+        "notes": "Not a real official road name -- generic label for the internal walkable loop ringing the park/shops core. Use small wayfinding-style signs, not vehicle street signs."
+      },
+      "notes": "Closed loop representing the walkable retail core internal streets (lower speed, wider sidewalks, on-street parking). Use a different road material/width than the arterials -- lighter paving, planters along the edge."
+    }
+  ],
+
+  "intersections": [
+    {
+      "id": "six_forks_x_lassiter_mill",
+      "name": "Six Forks Rd & Lassiter Mill Rd",
+      "local_xz": { "x": -180, "z": -73 },
+      "roads": ["six_forks_rd", "lassiter_mill_rd"],
+      "has_traffic_light": true,
+      "light_type": "standard_4way",
+      "notes": "Major intersection -- main signal-controlled crossing in the district."
+    },
+    {
+      "id": "six_forks_x_park_at_north_hills",
+      "name": "Six Forks Rd & Park at N Hills St",
+      "local_xz": { "x": -150, "z": -100 },
+      "roads": ["six_forks_rd", "park_at_north_hills_st"],
+      "has_traffic_light": true,
+      "light_type": "standard_4way",
+      "notes": "Signal at the office tower district entrance."
+    },
+    {
+      "id": "lassiter_mill_x_st_albans",
+      "name": "Lassiter Mill Rd & St Albans Dr",
+      "local_xz": { "x": 200, "z": -100 },
+      "roads": ["lassiter_mill_rd", "st_albans_dr"],
+      "has_traffic_light": true,
+      "light_type": "standard_4way",
+      "notes": "Signal near the innovation district."
+    },
+    {
+      "id": "st_albans_x_dartmouth",
+      "name": "St Albans Dr & Dartmouth Rd",
+      "local_xz": { "x": 175, "z": -90 },
+      "roads": ["st_albans_dr", "dartmouth_rd"],
+      "has_traffic_light": false,
+      "light_type": "stop_sign",
+      "notes": "Minor local junction, stop-sign controlled."
+    },
+    {
+      "id": "park_at_north_hills_x_loop",
+      "name": "Park at N Hills St & Midtown Park Walk",
+      "local_xz": { "x": -73, "z": -163 },
+      "roads": ["park_at_north_hills_st", "midtown_internal_loop"],
+      "has_traffic_light": false,
+      "light_type": "stop_sign",
+      "notes": "Minor junction into the retail core loop -- stop sign matches the lower-speed pedestrian character there."
+    }
+  ]
+}

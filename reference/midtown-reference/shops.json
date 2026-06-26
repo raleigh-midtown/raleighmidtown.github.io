@@ -1,0 +1,126 @@
+{
+  "area": "Midtown Raleigh / North Hills District, NC -- retail core",
+  "schema_note": "Same local_xz coordinate system as buildings.json / roads.json / park.json. These are individually named storefronts within the 'north_hills_district' building cluster from buildings.json -- use these for ground-floor signage/labeling detail, and the parent cluster entry for overall massing.",
+  "shops": [
+    {
+      "id": "stir_restaurant",
+      "name": "STIR",
+      "type": "restaurant_upscale",
+      "local_xz": { "x": 60, "z": -110 },
+      "footprint_dims_est_m": { "width": 20, "depth": 15 },
+      "rotation_deg_est": 12,
+      "stories_est": 1,
+      "facade": "upscale_storefront_with_valet_entry",
+      "role_in_scene": "anchor_restaurant",
+      "notes": "Ground floor of/adjacent to the Bank of America Tower block. Valet entrance -- consider a small porte-cochere/awning detail."
+    },
+    {
+      "id": "yard_house_restaurant",
+      "name": "Yard House",
+      "type": "restaurant_bar_grill",
+      "local_xz": { "x": 75, "z": -100 },
+      "footprint_dims_est_m": { "width": 22, "depth": 16 },
+      "rotation_deg_est": 12,
+      "stories_est": 1,
+      "facade": "casual_storefront_large_windows",
+      "role_in_scene": "anchor_restaurant",
+      "notes": "Large casual dining/bar frontage, big glass storefront."
+    },
+    {
+      "id": "rh_rooftop_restaurant",
+      "name": "RH Rooftop Restaurant",
+      "type": "restaurant_upscale_rooftop",
+      "local_xz": { "x": -195, "z": -100 },
+      "footprint_dims_est_m": { "width": 30, "depth": 20 },
+      "rotation_deg_est": 20,
+      "stories_est": 1,
+      "facade": "rooftop_terrace_with_fire_pits",
+      "role_in_scene": "rooftop_feature",
+      "notes": "Sits on top of the rh_raleigh_showroom building (see buildings.json) -- model as the rooftop level of that building, not a separate ground-floor box. Has outdoor seating with fire pits."
+    },
+    {
+      "id": "village_tavern_restaurant",
+      "name": "Village Tavern",
+      "type": "restaurant_american",
+      "local_xz": { "x": -160, "z": -90 },
+      "footprint_dims_est_m": { "width": 18, "depth": 14 },
+      "rotation_deg_est": 20,
+      "stories_est": 1,
+      "facade": "chic_storefront",
+      "role_in_scene": "street_frontage",
+      "notes": "Near Lassiter Mill Rd frontage."
+    },
+    {
+      "id": "leos_italian_social",
+      "name": "Leo's Italian Social",
+      "type": "restaurant_italian",
+      "local_xz": { "x": -185, "z": -130 },
+      "footprint_dims_est_m": { "width": 16, "depth": 12 },
+      "rotation_deg_est": 20,
+      "stories_est": 1,
+      "facade": "tucked_beneath_hotel_entrance",
+      "role_in_scene": "street_frontage",
+      "notes": "Sits beneath a hotel block in real life -- model as a ground-floor tenant space."
+    },
+    {
+      "id": "sixty_vines_restaurant",
+      "name": "Sixty Vines",
+      "type": "restaurant_wine_bar",
+      "local_xz": { "x": -215, "z": -270 },
+      "footprint_dims_est_m": { "width": 22, "depth": 16 },
+      "rotation_deg_est": 20,
+      "stories_est": 1,
+      "facade": "rooftop_patio_plus_ground_floor",
+      "role_in_scene": "street_frontage",
+      "notes": "Has its own rooftop patio in addition to ground floor -- near One North Hills Tower."
+    },
+    {
+      "id": "barking_dog_restaurant",
+      "name": "Barking Dog",
+      "type": "restaurant_casual_dog_friendly",
+      "local_xz": { "x": 30, "z": -130 },
+      "footprint_dims_est_m": { "width": 18, "depth": 14 },
+      "rotation_deg_est": 5,
+      "stories_est": 1,
+      "facade": "heated_enclosed_patio",
+      "role_in_scene": "street_frontage",
+      "notes": "Dog-friendly casual restaurant, near Park at N Hills St frontage."
+    },
+    {
+      "id": "shop_block_generic_a",
+      "name": "Retail Block A (generic storefronts)",
+      "type": "retail_storefront_row",
+      "local_xz": { "x": -150, "z": -200 },
+      "footprint_dims_est_m": { "width": 40, "depth": 15 },
+      "rotation_deg_est": 5,
+      "stories_est": 2,
+      "facade": "varied_storefronts_awnings",
+      "role_in_scene": "street_frontage_filler",
+      "notes": "Row of 4-6 small attached generic shopfronts -- use for filler variety, no specific real tenant mapped."
+    },
+    {
+      "id": "shop_block_generic_b",
+      "name": "Retail Block B (generic storefronts)",
+      "type": "retail_storefront_row",
+      "local_xz": { "x": 30, "z": -180 },
+      "footprint_dims_est_m": { "width": 50, "depth": 15 },
+      "rotation_deg_est": -8,
+      "stories_est": 1,
+      "facade": "varied_storefronts_awnings",
+      "role_in_scene": "street_frontage_filler",
+      "notes": "Single-story generic strip facing the park, slightly angled to the loop road."
+    },
+    {
+      "id": "anchor_retail_block",
+      "name": "Anchor Retail/Department Store Block",
+      "type": "anchor_retail",
+      "local_xz": { "x": -40, "z": -100 },
+      "footprint_dims_est_m": { "width": 70, "depth": 45 },
+      "rotation_deg_est": 0,
+      "stories_est": 2,
+      "facade": "large_glass_storefront",
+      "role_in_scene": "anchor_block",
+      "notes": "Larger single retail volume (department-store scale) bordering Midtown Park."
+    }
+  ]
+}
