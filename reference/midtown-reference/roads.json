@@ -14,6 +14,15 @@
       "lanes_est": 4,
       "width_m_est": 18,
       "has_sidewalk": true,
+      "lane_markings": {
+        "center_line": "double_yellow_solid",
+        "lane_divider": "white_dashed",
+        "lane_divider_count": 2,
+        "edge_line": "white_solid",
+        "crosswalks_at_intersections": true,
+        "stop_bar_at_signals": true,
+        "notes": "4-lane arterial: double yellow center, one dashed white divider per direction (2 lanes each side), solid white edge lines. Full crosswalk + stop bar at every signaled intersection."
+      },
       "speed_character": "moderate_through_traffic",
       "path_xz": [
         { "x": -260, "z": -550 },
@@ -40,6 +49,15 @@
       "lanes_est": 2,
       "width_m_est": 12,
       "has_sidewalk": true,
+      "lane_markings": {
+        "center_line": "single_yellow_solid",
+        "lane_divider": "none",
+        "lane_divider_count": 0,
+        "edge_line": "white_solid",
+        "crosswalks_at_intersections": true,
+        "stop_bar_at_signals": true,
+        "notes": "2-lane collector: single solid yellow center, no internal lane dividers (one lane per direction), white edge lines. Crosswalk + stop bar at the signaled crossing with Six Forks Rd."
+      },
       "speed_character": "moderate",
       "path_xz": [
         { "x": -400, "z": -50 },
@@ -64,6 +82,15 @@
       "lanes_est": 2,
       "width_m_est": 10,
       "has_sidewalk": true,
+      "lane_markings": {
+        "center_line": "single_yellow_dashed",
+        "lane_divider": "none",
+        "lane_divider_count": 0,
+        "edge_line": "white_solid",
+        "crosswalks_at_intersections": true,
+        "stop_bar_at_signals": true,
+        "notes": "2-lane local road: dashed yellow center (lower speed than collector/arterial), white edge lines, crosswalk + stop bar at its signaled Six Forks Rd crossing."
+      },
       "speed_character": "slow_local",
       "path_xz": [
         { "x": -210, "z": -280 },
@@ -87,6 +114,15 @@
       "lanes_est": 2,
       "width_m_est": 10,
       "has_sidewalk": true,
+      "lane_markings": {
+        "center_line": "single_yellow_dashed",
+        "lane_divider": "none",
+        "lane_divider_count": 0,
+        "edge_line": "white_solid",
+        "crosswalks_at_intersections": true,
+        "stop_bar_at_signals": true,
+        "notes": "2-lane local road, same marking style as the other local streets in the district."
+      },
       "speed_character": "slow_local",
       "path_xz": [
         { "x": 100, "z": -200 },
@@ -109,6 +145,15 @@
       "lanes_est": 2,
       "width_m_est": 9,
       "has_sidewalk": true,
+      "lane_markings": {
+        "center_line": "none",
+        "lane_divider": "none",
+        "lane_divider_count": 0,
+        "edge_line": "white_solid",
+        "crosswalks_at_intersections": true,
+        "stop_bar_at_signals": false,
+        "notes": "Quiet residential-feeling local street, narrow enough that no center line is typical -- just edge lines. Crosswalk at its stop-sign junction with St Albans Dr, but no stop bar paint since it's a minor unsignaled stop."
+      },
       "speed_character": "slow_local",
       "path_xz": [
         { "x": 150, "z": -120 },
@@ -131,6 +176,15 @@
       "lanes_est": 1,
       "width_m_est": 8,
       "has_sidewalk": true,
+      "lane_markings": {
+        "center_line": "none",
+        "lane_divider": "none",
+        "lane_divider_count": 0,
+        "edge_line": "none",
+        "crosswalks_at_intersections": true,
+        "stop_bar_at_signals": false,
+        "notes": "Shared pedestrian-priority lane -- NO vehicle lane markings (no center line, no dashes, no edge stripe). Instead use a paving-pattern change (e.g. lighter pavers or a brick-style texture band) to distinguish it from the road surface. Still mark a crosswalk-style paving strip where it crosses Park at N Hills St, since pedestrians/cars do cross there, but skip the stop-bar paint -- that junction is stop-sign controlled, not a painted vehicle stop line."
+      },
       "speed_character": "very_slow_shared_pedestrian",
       "path_xz": [
         { "x": -73, "z": -163 },

@@ -37,6 +37,14 @@ heights, footprints, and local x/z positions to place meshes in scene-space.
   low retail cluster.
 
 ## Roads, intersections & streetscape
+- Each road in `roads.json` now has a `lane_markings` block (center line
+  type, lane dividers, edge lines, crosswalks, stop bars) — render these as
+  thin emissive or bright-white decal strips along the road surface, not
+  separate geometry. Respect per-road differences: arterials get a double
+  yellow center + dashed dividers, locals get a single dashed yellow line,
+  and `midtown_internal_loop` (the park's pedestrian lane) gets **no**
+  vehicle lane lines at all — distinguish it with a paving texture/color
+  change instead.
 - Roads are defined in `roads.json` as `path_xz` point arrays — build them as
   a flat extruded ribbon following those points, not as straight segments
   between endpoints only. Slight curves matter for read.
