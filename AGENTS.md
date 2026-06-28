@@ -41,6 +41,8 @@ threejs-midtownraleigh/
 │   │   ├── trees.ts                     # InstancedMesh tree forest
 │   │   ├── fences.ts                    # iron perimeter fences around buildings
 │   │   ├── parkingLots.ts               # flat asphalt surface lots + isUnnamedParkingGarage predicate (shared with extrude.ts)
+│   │   ├── roadParking.ts               # road-level parking apron + angled parked cars (Park & Market North Hills frontage)
+│   │   ├── parkedCars.ts                # low-poly parked-car geometry + per-instance colour palette
 │   │   ├── benches.ts                   # Midtown Park benches + street benches for named buildings
 │   │   ├── chuysDecor.ts                # Chuy's patio (3 barrel arches + flat roof + columns)
 │   │   ├── parkStage.ts                 # Midtown Park performance stage (Group-wrapped, rotatable)
@@ -48,7 +50,10 @@ threejs-midtownraleigh/
 │   │   ├── shopSigns.ts                 # POI sprites for shops
 │   │   ├── buildingDetails.ts           # balconies, railings, doors
 │   │   └── util/
-│   │       └── geom.ts                  # shared polygon geometry helpers (pointInRing, isInsideAnyBuilding, polygonCentroid, edgeOutwardNormal, edgeInwardNormal, collectBuildingBoxes)
+│   │       ├── geom.ts                  # shared polygon geometry helpers (pointInRing, isInsideAnyBuilding, polygonCentroid, edgeOutwardNormal, edgeInwardNormal, collectBuildingBoxes, findBuildingByName)
+│   │       ├── osmPredicates.ts         # shared OSM tag predicates (isUnnamedParkingGarage)
+│   │       ├── shapes.ts                # ring → ShapeGeometry helpers (world-metre UVs)
+│   │       └── stallTexture.ts          # CanvasTexture stall-stripe painter (shared by parkingLots + roadParking)
 │   ├── character/
 │   │   ├── loader.ts                    # GLTFLoader + Group-wrapper (Mixamo faces +Z; controller wants -Z)
 │   │   └── controller.ts                # state machine (idle/walk/run × grounded/airborne), jump physics, tuck-pose blend
