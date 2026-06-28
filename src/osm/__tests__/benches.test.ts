@@ -106,6 +106,10 @@ describe('buildBenches', () => {
     const group = buildBenches(fc);
     expect(group.children.length).toBeGreaterThan(0);
   });
+
+  it('group.name is benches', () => {
+    expect(buildBenches(mkPark()).name).toBe('benches');
+  });
 });
 
 // ── buildStreetBenches ────────────────────────────────────────────────────────

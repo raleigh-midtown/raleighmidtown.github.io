@@ -80,6 +80,13 @@ describe('buildParkingLots', () => {
     const mesh = group.children[0] as THREE.Mesh;
     expect(mesh).toBeInstanceOf(THREE.Mesh);
     expect(mesh.material).toBeInstanceOf(THREE.MeshStandardMaterial);
+
+    const mat = mesh.material as THREE.MeshStandardMaterial;
+    expect(mat.map).toBeInstanceOf(THREE.CanvasTexture);
+
+    const map = mat.map as THREE.CanvasTexture;
+    expect(map.repeat.x).toBeCloseTo(1 / 2.5);
+    expect(map.repeat.y).toBeCloseTo(1 / 5.0);
   });
 
   it('filter: named parking feature is skipped', () => {
@@ -155,6 +162,38 @@ describe('buildParkingLots', () => {
         },
       ],
     };
+    const group = buildParkingLots(fc);
+    expect(group.children.length).toBe(2);
+  });
+
+  it('MultiPolygon feature produces one mesh per polygon', () => {
+    const fc: FeatureCollection = {
+      type: 'FeatureCollection',
+      features: [{
+        type: 'Feature',
+        properties: { amenity: 'parking', parking: 'multi-storey', building: 'parking' },
+        geometry: {
+          type: 'MultiPolygon',
+          coordinates: [
+            [[
+              [-78.6405, 35.8380],
+              [-78.6395, 35.8380],
+              [-78.6395, 35.8390],
+              [-78.6405, 35.8390],
+              [-78.6405, 35.8380],
+            ]],
+            [[
+              [-78.6415, 35.8380],
+              [-78.6410, 35.8380],
+              [-78.6410, 35.8385],
+              [-78.6415, 35.8385],
+              [-78.6415, 35.8380],
+            ]],
+          ],
+        },
+      }],
+    };
+
     const group = buildParkingLots(fc);
     expect(group.children.length).toBe(2);
   });

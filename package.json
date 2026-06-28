@@ -12,6 +12,7 @@
   "devDependencies": {
     "@types/proj4": "^2.5.5",
     "@types/three": "^0.185.0",
+    "canvas": "^3.2.3",
     "jsdom": "^27.0.1",
     "typescript": "^5.5.3",
     "vite": "^5.3.1",

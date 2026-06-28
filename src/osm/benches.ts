@@ -64,6 +64,22 @@ function makeBench(cx: number, cz: number, yawRad: number): THREE.BufferGeometry
   return parts;
 }
 
+function finalizeBenchGroup(geos: THREE.BufferGeometry[], group: THREE.Group): void {
+  if (geos.length === 0) return;
+
+  const merged = mergeGeometries(geos, false);
+  if (!merged) {
+    for (const g of geos) g.dispose();
+    return;
+  }
+  for (const g of geos) g.dispose();
+
+  const mesh = new THREE.Mesh(merged, getWoodMat());
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  group.add(mesh);
+}
+
 function findBuildingByName(geojson: FeatureCollection, name: string): Pt[] | null {
   for (const f of geojson.features as Feature[]) {
     const p = (f.properties ?? {}) as Record<string, unknown>;
@@ -117,20 +133,7 @@ export function buildBenches(geojson: FeatureCollection): THREE.Group {
     }
   }
 
-  if (geos.length === 0) return group;
-
-  const merged = mergeGeometries(geos, false);
-  if (!merged) {
-    for (const g of geos) g.dispose();
-    return group;
-  }
-  for (const g of geos) g.dispose();
-
-  const mesh = new THREE.Mesh(merged, getWoodMat());
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  group.add(mesh);
-
+  finalizeBenchGroup(geos, group);
   return group;
 }
 
@@ -184,19 +187,6 @@ export function buildStreetBenches(geojson: FeatureCollection): THREE.Group {
     }
   }
 
-  if (geos.length === 0) return group;
-
-  const merged = mergeGeometries(geos, false);
-  if (!merged) {
-    for (const g of geos) g.dispose();
-    return group;
-  }
-  for (const g of geos) g.dispose();
-
-  const mesh = new THREE.Mesh(merged, getWoodMat());
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  group.add(mesh);
-
+  finalizeBenchGroup(geos, group);
   return group;
 }
