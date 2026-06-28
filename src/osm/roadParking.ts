@@ -9,36 +9,25 @@ import {
   polygonCentroid,
 } from './util/geom.js';
 import { makeStallTexture } from './util/stallTexture.js';
+import { sceneRingToShape, shapeToGroundGeometry } from './util/shapes.js';
+import { PARKING_Y, PARKING_COLOR, STALL_WIDTH, STALL_DEPTH } from './util/parkingSurface.js';
 import { makeCarGeometry, colorForIndex } from './parkedCars.js';
 
 const BUILDING_NAME = 'Park & Market North Hills';
 
-const PARKING_Y     = 0.08;          // shared parking-surface layer (CONCEPTS.md Y-stack)
-const PARKING_COLOR = 0x2a2826;      // dark asphalt, matches parkingLots.ts
-const STALL_WIDTH   = 2.5;           // shared stripe cadence — car centres coincide with stripes
-const STALL_DEPTH   = 5.0;
-
 const SIDEWALK_GAP  = 3.0;           // walking space between building edge and apron
-const APRON_DEPTH   = 5.5;           // one perpendicular stall row deep
+const APRON_DEPTH   = 5.5;           // stall row depth (fits an angled car)
 const MIN_EDGE_LEN  = 6;             // need room for ~2+ stalls
 const FRONTAGE_Z_MIN = 0.5;          // outward normal must point +Z (toward The Eastern / the road)
 
-/**
- * ShapeGeometry from scene-metre corners, using the same (x,-z)/rotateX/translate
- * recipe as util/shapes.ts ringsToGeometry. ShapeGeometry stores the raw shape
- * coordinates as UVs (world metres, not [0,1]), so a stall texture with
- * repeat=(1/STALL_WIDTH, 1/STALL_DEPTH) tiles one stall per stall-size metres —
- * a raw PlaneGeometry with [0,1] UVs would smear a single stripe instead.
- */
-function apronGeometry(corners: Pt[]): THREE.BufferGeometry {
-  const shape = new THREE.Shape();
-  shape.moveTo(corners[0][0], -corners[0][1]);
-  for (let i = 1; i < corners.length; i++) shape.lineTo(corners[i][0], -corners[i][1]);
-  shape.closePath();
-  const geo = new THREE.ShapeGeometry(shape);
-  geo.rotateX(-Math.PI / 2);
-  geo.translate(0, PARKING_Y, 0);
-  return geo;
+const CAR_SPACING   = 6.0;           // centre-to-centre along the edge → gaps between cars, fewer cars
+const STALL_ANGLE   = Math.PI / 4;   // 45° tilt off perpendicular → angled (diagonal) parking
+const OCCUPANCY     = 0.65;          // fraction of stalls that hold a car; the rest stay vacant
+
+/** Deterministic pseudo-random in [0,1) — stable vacancy/colour pattern across reloads. */
+function stallNoise(k: number): number {
+  const s = Math.sin((k + 1) * 12.9898) * 43758.5453;
+  return s - Math.floor(s);
 }
 
 /**
@@ -105,11 +94,12 @@ export function buildRoadParking(geojson: FeatureCollection): THREE.Group {
     [ax + outX * outerOff, az + outZ * outerOff],
   ];
 
-  const apronGeo = apronGeometry(corners);
-  let map: THREE.CanvasTexture | null = makeStallTexture();
+  // Apron built via the shared world-metre-UV recipe so the stall texture
+  // (repeat = 1/STALL_WIDTH, 1/STALL_DEPTH) tiles correctly across the surface.
+  const apronGeo = shapeToGroundGeometry(sceneRingToShape(corners), PARKING_Y);
+  const map: THREE.CanvasTexture | null = makeStallTexture();
   if (map) {
-    map.wrapS = THREE.RepeatWrapping;
-    map.wrapT = THREE.RepeatWrapping;
+    // makeStallTexture already sets wrapS/wrapT to RepeatWrapping.
     map.repeat.set(1 / STALL_WIDTH, 1 / STALL_DEPTH);
     map.needsUpdate = true;
   }
@@ -124,26 +114,33 @@ export function buildRoadParking(geojson: FeatureCollection): THREE.Group {
   apron.renderOrder = 1;
   group.add(apron);
 
-  // Stall transforms: perpendicular row, nose toward the building (inward).
-  const yaw = Math.atan2(-outX, -outZ);
+  // Stall transforms: angled row, noses tilted toward the building (inward).
+  const yaw = Math.atan2(-outX, -outZ) + STALL_ANGLE;
   const midOut = SIDEWALK_GAP + APRON_DEPTH / 2;
-  const num = Math.max(1, Math.floor(L / STALL_WIDTH));
-  const positions: THREE.Vector3[] = [];
+  const num = Math.max(1, Math.floor(L / CAR_SPACING));
+  const stalls: { pos: THREE.Vector3; k: number }[] = [];
   for (let k = 0; k < num; k++) {
+    if (stallNoise(k) > OCCUPANCY) continue;          // leave this stall vacant
     const t = (k + 0.5) * (L / num);
     const px = ax + ux * t + outX * midOut;
     const pz = az + uz * t + outZ * midOut;
     if (isInsideAnyBuilding(px, pz, boxes)) continue;
-    positions.push(new THREE.Vector3(px, PARKING_Y, pz));
+    stalls.push({ pos: new THREE.Vector3(px, PARKING_Y, pz), k });
   }
 
   // Zero-survivor guard: apron-only group, no zero-count InstancedMesh.
-  if (positions.length === 0) return group;
+  if (stalls.length === 0) return group;
 
   const carGeo = makeCarGeometry();
-  // White base colour so per-instance setColorAt renders the palette untinted.
-  const carMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6, metalness: 0.15 });
-  const cars = new THREE.InstancedMesh(carGeo, carMat, positions.length);
+  // White base colour + vertexColors so baked black wheels / dark glass survive
+  // while per-instance setColorAt tints only the body and roof.
+  const carMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    vertexColors: true,
+    roughness: 0.6,
+    metalness: 0.15,
+  });
+  const cars = new THREE.InstancedMesh(carGeo, carMat, stalls.length);
   cars.name = 'roadParkingCars';
   cars.castShadow = true;
   cars.receiveShadow = true;
@@ -151,10 +148,10 @@ export function buildRoadParking(geojson: FeatureCollection): THREE.Group {
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
   const scale = new THREE.Vector3(1, 1, 1);
-  for (let i = 0; i < positions.length; i++) {
-    m.compose(positions[i], q, scale);
+  for (let i = 0; i < stalls.length; i++) {
+    m.compose(stalls[i].pos, q, scale);
     cars.setMatrixAt(i, m);
-    cars.setColorAt(i, colorForIndex(i));
+    cars.setColorAt(i, colorForIndex(stalls[i].k));
   }
   cars.instanceMatrix.needsUpdate = true;
   if (cars.instanceColor) cars.instanceColor.needsUpdate = true;

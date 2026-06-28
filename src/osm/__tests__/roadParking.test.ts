@@ -81,9 +81,18 @@ describe('buildRoadParking', () => {
     expect(apron.renderOrder).toBe(1);
   });
 
-  it('car instanced material base colour is white so setColorAt is untinted', () => {
+  it('car instanced material is white + vertexColors so baked colours survive the tint', () => {
     const cars = findCars(buildRoadParking(mkPM()))!;
-    expect((cars.material as THREE.MeshStandardMaterial).color.getHex()).toBe(0xffffff);
+    const mat = cars.material as THREE.MeshStandardMaterial;
+    expect(mat.color.getHex()).toBe(0xffffff);
+    expect(mat.vertexColors).toBe(true);
+  });
+
+  it('leaves some stalls vacant: parked car count is below the stall capacity', () => {
+    const cars = findCars(buildRoadParking(mkPM()))!;
+    // ~90 m south edge / 6 m spacing ≈ 15 stalls; ~65% occupancy leaves gaps.
+    expect(cars.count).toBeGreaterThan(0);
+    expect(cars.count).toBeLessThan(15);
   });
 
   it('cars carry more than one distinct per-instance colour', () => {
@@ -95,20 +104,25 @@ describe('buildRoadParking', () => {
     expect(seen.size).toBeGreaterThan(1);
   });
 
-  it('cars face the building (yaw rotates +Z nose to -Z, inward from the +Z frontage)', () => {
+  it('cars are angled inward (nose tilts toward the building, not axis-aligned)', () => {
     const cars = findCars(buildRoadParking(mkPM()))!;
     const m = new THREE.Matrix4();
     cars.getMatrixAt(0, m);
     const nose = new THREE.Vector3(0, 0, 1).applyQuaternion(
       new THREE.Quaternion().setFromRotationMatrix(m),
     );
-    // Inward from a +Z-facing frontage means the nose points -Z (toward the building).
-    expect(nose.z).toBeLessThan(-0.9);
+    // Angled parking off a +Z-facing frontage: the nose still has an inward
+    // (-Z) component, but is tilted off the perpendicular (non-zero X).
+    expect(nose.z).toBeLessThan(0);
+    expect(Math.abs(nose.x)).toBeGreaterThan(0.3);
   });
 
-  it('blocked frontage: a building over the apron band yields no cars', () => {
+  it('blocked frontage: a building over the apron band rejects the edge (empty group, no cars)', () => {
     const g = buildRoadParking(addSouthBlocker(mkPM()));
     expect(findCars(g)).toBeUndefined();
+    // The band-clear test rejects the only +Z frontage edge, so no apron is laid
+    // either — distinguishes this path from the apron-only zero-survivor path.
+    expect(g.children.length).toBe(0);
   });
 
   it('building not found: empty group, no throw, warns', () => {

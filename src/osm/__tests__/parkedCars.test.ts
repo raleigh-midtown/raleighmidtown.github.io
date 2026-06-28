@@ -27,6 +27,20 @@ describe('makeCarGeometry', () => {
     expect(geo.boundingBox!.min.y).toBeGreaterThan(-1e-4);
     expect(geo.boundingBox!.min.y).toBeLessThan(0.1);
   });
+
+  it('bakes per-part vertex colours: black wheels and white body both present', () => {
+    const geo = makeCarGeometry();
+    const color = geo.getAttribute('color');
+    expect(color).toBeTruthy();
+    let hasBlack = false, hasWhite = false;
+    const a = color.array;
+    for (let i = 0; i < a.length; i += 3) {
+      if (a[i] < 0.1 && a[i + 1] < 0.1 && a[i + 2] < 0.1) hasBlack = true;
+      if (a[i] > 0.99 && a[i + 1] > 0.99 && a[i + 2] > 0.99) hasWhite = true;
+    }
+    expect(hasBlack).toBe(true);  // wheels stay black under any instance tint
+    expect(hasWhite).toBe(true);  // body takes the per-instance palette colour
+  });
 });
 
 describe('colorForIndex', () => {
