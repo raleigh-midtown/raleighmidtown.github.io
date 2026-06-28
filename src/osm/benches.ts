@@ -64,18 +64,6 @@ function makeBench(cx: number, cz: number, yawRad: number): THREE.BufferGeometry
   return parts;
 }
 
-function findMidtownPark(geojson: FeatureCollection): Pt[] | null {
-  for (const f of geojson.features as Feature[]) {
-    const p = (f.properties ?? {}) as Record<string, unknown>;
-    if (String(p['name'] ?? '') !== MIDTOWN_PARK_NAME) continue;
-    const rings = getRings(f as Feature);
-    if (rings.length === 0) continue;
-    return rings[0].map(c => projectLonLat(c[0], c[1]));
-  }
-  return null;
-}
-
-/** Generalises findMidtownPark — finds any named building polygon by its OSM name. */
 function findBuildingByName(geojson: FeatureCollection, name: string): Pt[] | null {
   for (const f of geojson.features as Feature[]) {
     const p = (f.properties ?? {}) as Record<string, unknown>;
@@ -95,7 +83,8 @@ function findBuildingByName(geojson: FeatureCollection, name: string): Pt[] | nu
  */
 export function buildBenches(geojson: FeatureCollection): THREE.Group {
   const group = new THREE.Group();
-  const park = findMidtownPark(geojson);
+  group.name = 'benches';
+  const park = findBuildingByName(geojson, MIDTOWN_PARK_NAME);
   if (!park || park.length < 4) return group;
 
   const [cx, cz] = polygonCentroid(park);
@@ -140,7 +129,6 @@ export function buildBenches(geojson: FeatureCollection): THREE.Group {
   const mesh = new THREE.Mesh(merged, getWoodMat());
   mesh.castShadow = true;
   mesh.receiveShadow = true;
-  group.name = 'benches';
   group.add(mesh);
 
   return group;
@@ -157,13 +145,17 @@ const STREET_BENCH_BUILDINGS = ['Park & Market North Hills', 'The Eastern'] as c
  */
 export function buildStreetBenches(geojson: FeatureCollection): THREE.Group {
   const group = new THREE.Group();
+  group.name = 'streetBenches';
   // Collect building boxes once — shared across all named buildings.
   const buildingBoxes = collectBuildingBoxes(geojson);
   const geos: THREE.BufferGeometry[] = [];
 
   for (const name of STREET_BENCH_BUILDINGS) {
     const ring = findBuildingByName(geojson, name);
-    if (!ring || ring.length < 4) continue;
+    if (!ring || ring.length < 4) {
+      if (!ring) console.warn(`buildStreetBenches: building "${name}" not found in OSM data`);
+      continue;
+    }
 
     const [cx, cz] = polygonCentroid(ring);
 
@@ -184,6 +176,8 @@ export function buildStreetBenches(geojson: FeatureCollection): THREE.Group {
         const t = (k + 0.5) * (L / num);
         const tx = ax + ux * t + outX * STREET_BENCH_INSET;
         const tz = az + uz * t + outZ * STREET_BENCH_INSET;
+        // No pointInRing guard here — benches are placed OUTSIDE the building
+        // ring (outward offset), so an inside-ring test would reject all candidates.
         if (isInsideAnyBuilding(tx, tz, buildingBoxes)) continue;
         geos.push(...makeBench(tx, tz, yaw));
       }
@@ -202,7 +196,6 @@ export function buildStreetBenches(geojson: FeatureCollection): THREE.Group {
   const mesh = new THREE.Mesh(merged, getWoodMat());
   mesh.castShadow = true;
   mesh.receiveShadow = true;
-  group.name = 'streetBenches';
   group.add(mesh);
 
   return group;

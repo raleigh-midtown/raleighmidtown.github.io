@@ -40,7 +40,8 @@ threejs-midtownraleigh/
 │   │   ├── streetscape.ts               # sidewalk band around each building, tree placement w/ road & building rejection
 │   │   ├── trees.ts                     # InstancedMesh tree forest
 │   │   ├── fences.ts                    # iron perimeter fences around buildings
-│   │   ├── benches.ts                   # Midtown Park benches
+│   │   ├── parkingLots.ts               # flat asphalt surface lots + isUnnamedParkingGarage predicate (shared with extrude.ts)
+│   │   ├── benches.ts                   # Midtown Park benches + street benches for named buildings
 │   │   ├── chuysDecor.ts                # Chuy's patio (3 barrel arches + flat roof + columns)
 │   │   ├── parkStage.ts                 # Midtown Park performance stage (Group-wrapped, rotatable)
 │   │   ├── labels.ts                    # building name sprites (proximity-faded)
@@ -74,10 +75,11 @@ Coplanar ground layers are vertically separated to avoid z-fighting from the aer
 | ground plane | 0 |
 | greenspace | 0.02–0.04 |
 | sidewalk | 0.05 |
+| parking surface | 0.08 |
 | road asphalt | 0.10 |
 | lane stripe | 0.14 |
 
-Hard-coded throughout `src/osm/{roads,greenspace,streetscape}.ts`. New ground-level layers must slot into this stack.
+Hard-coded throughout `src/osm/{roads,greenspace,streetscape,parkingLots}.ts`. New ground-level layers must slot into this stack.
 
 See [CONCEPTS.md](CONCEPTS.md) for full glossary including named scene entities (Midtown Park, Midtown Green, Park Central, Chuy's patio, Park stage) and character state semantics.
 

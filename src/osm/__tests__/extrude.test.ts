@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
 import type { FeatureCollection } from 'geojson';
-import { extrudeBuildings } from '../extrude.js';
+import { extrudeBuildings, extrudeBuildingBuckets, extrudeBuildingsGroup } from '../extrude.js';
 
 // Simple square polygon in Midtown Raleigh bbox area
 function makeSquareFeature(
@@ -187,5 +187,112 @@ describe('extrudeBuildings', () => {
     const merged = extrudeBuildings(geojson);
     expect(merged).toBeInstanceOf(THREE.BufferGeometry);
     merged.dispose();
+  });
+});
+
+// ── extrudeBuildingBuckets (production path via extrudeBuildingsGroup) ────────
+
+describe('extrudeBuildingBuckets', () => {
+  it('excludes unnamed parking garage (amenity=parking building=parking no name)', () => {
+    // Parking + one real building so the function doesn't return an empty array.
+    const geojson: FeatureCollection = {
+      type: 'FeatureCollection',
+      features: [
+        {
+          type: 'Feature',
+          properties: { amenity: 'parking', parking: 'multi-storey', building: 'parking' },
+          geometry: {
+            type: 'Polygon',
+            coordinates: [[
+              [-78.6405, 35.8380], [-78.6395, 35.8380],
+              [-78.6395, 35.8390], [-78.6405, 35.8390],
+              [-78.6405, 35.8380],
+            ]],
+          },
+        },
+        {
+          type: 'Feature',
+          properties: { building: 'yes', height: '10' },
+          geometry: {
+            type: 'Polygon',
+            coordinates: [[
+              [-78.6410, 35.8380], [-78.6400, 35.8380],
+              [-78.6400, 35.8390], [-78.6410, 35.8390],
+              [-78.6410, 35.8380],
+            ]],
+          },
+        },
+      ],
+    };
+    const buckets = extrudeBuildingBuckets(geojson);
+    // Only the real building should appear; parking garage is excluded.
+    const totalGeos = buckets.reduce((n, b) => n + b.geometries.length, 0);
+    expect(totalGeos).toBe(1);
+    for (const b of buckets) b.geometries.forEach(g => g.dispose());
+  });
+
+  it('still extrudes named parking building', () => {
+    const geojson: FeatureCollection = {
+      type: 'FeatureCollection',
+      features: [{
+        type: 'Feature',
+        properties: {
+          amenity: 'parking', parking: 'multi-storey',
+          building: 'parking', name: 'Advanced Auto Parts Tower',
+        },
+        geometry: {
+          type: 'Polygon',
+          coordinates: [[
+            [-78.6405, 35.8380], [-78.6395, 35.8380],
+            [-78.6395, 35.8390], [-78.6405, 35.8390],
+            [-78.6405, 35.8380],
+          ]],
+        },
+      }],
+    };
+    const buckets = extrudeBuildingBuckets(geojson);
+    const totalGeos = buckets.reduce((n, b) => n + b.geometries.length, 0);
+    expect(totalGeos).toBe(1);
+    for (const b of buckets) b.geometries.forEach(g => g.dispose());
+  });
+});
+
+// ── extrudeBuildingsGroup (also calls extrudeBuildingBuckets) ─────────────────
+
+describe('extrudeBuildingsGroup', () => {
+  it('returns a THREE.Group with at least one Mesh child', () => {
+    const geojson = makeSquareFeature({ building: 'yes', height: '10' });
+    const group = extrudeBuildingsGroup(geojson);
+    expect(group).toBeInstanceOf(THREE.Group);
+    expect(group.children.length).toBeGreaterThan(0);
+    expect(group.children[0]).toBeInstanceOf(THREE.Mesh);
+    group.children.forEach(c => (c as THREE.Mesh).geometry.dispose());
+  });
+
+  it('throws when feature collection has no buildings', () => {
+    const geojson: FeatureCollection = { type: 'FeatureCollection', features: [] };
+    expect(() => extrudeBuildingsGroup(geojson)).toThrow('No building geometries');
+  });
+
+  it('excludes unnamed parking garages (production extrusion path)', () => {
+    const geojson: FeatureCollection = {
+      type: 'FeatureCollection',
+      features: [
+        {
+          type: 'Feature',
+          properties: { amenity: 'parking', parking: 'multi-storey', building: 'parking' },
+          geometry: {
+            type: 'Polygon',
+            coordinates: [[
+              [-78.6405, 35.8380], [-78.6395, 35.8380],
+              [-78.6395, 35.8390], [-78.6405, 35.8390],
+              [-78.6405, 35.8380],
+            ]],
+          },
+        },
+      ],
+    };
+    // Only a parking garage → no buildings → should throw
+    expect(() => extrudeBuildingsGroup(geojson)).toThrow('No building geometries');
   });
 });
