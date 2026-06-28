@@ -1,39 +1,11 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import type { FeatureCollection, Feature, Polygon, MultiPolygon } from 'geojson';
-import { projectLonLat } from './project.js';
+import { ringsToGeometry } from './util/shapes.js';
 
 const COLOR_PARK  = 0x5A8A3A;
 const COLOR_GRASS = 0x6A8F5A;
 const COLOR_WOOD  = 0x3D6B3D;
-
-function ringToShape(ring: number[][]): THREE.Shape {
-  const shape = new THREE.Shape();
-  const [x0, z0] = projectLonLat(ring[0][0], ring[0][1]);
-  shape.moveTo(x0, -z0);
-  for (let i = 1; i < ring.length; i++) {
-    const [x, z] = projectLonLat(ring[i][0], ring[i][1]);
-    shape.lineTo(x, -z);
-  }
-  shape.closePath();
-  return shape;
-}
-
-function ringsToGeometry(rings: number[][][], y: number): THREE.BufferGeometry | null {
-  if (rings[0].length < 3) return null;
-  try {
-    const shape = ringToShape(rings[0]);
-    for (let i = 1; i < rings.length; i++) {
-      shape.holes.push(ringToShape(rings[i]) as unknown as THREE.Path);
-    }
-    const geo = new THREE.ShapeGeometry(shape);
-    geo.rotateX(-Math.PI / 2);
-    geo.translate(0, y, 0);
-    return geo;
-  } catch {
-    return null;
-  }
-}
 
 function classify(props: Record<string, unknown>): { color: number; y: number } | null {
   const leisure = String(props['leisure'] ?? '');

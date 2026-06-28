@@ -1,54 +1,14 @@
 import * as THREE from 'three';
 import type { FeatureCollection, Feature, Polygon, MultiPolygon } from 'geojson';
-import { projectLonLat } from './project.js';
+import { ringsToGeometry } from './util/shapes.js';
+import { isUnnamedParkingGarage } from './util/osmPredicates.js';
+
+export { isUnnamedParkingGarage };
 
 const PARKING_Y     = 0.08;
 const PARKING_COLOR = 0x2a2826;  // dark asphalt, distinct from road asphalt (#444 in roads.ts)
 const STALL_WIDTH   = 2.5;        // world metres per stall column
 const STALL_DEPTH   = 5.0;        // world metres per stall row
-
-/**
- * Returns true when an OSM feature is an unnamed multi-storey parking garage
- * tagged building=parking. These are rendered as flat surface lots; the same
- * predicate is used in extrude.ts to exclude them from building extrusion.
- * Keep both uses in sync — import this function rather than duplicating it.
- */
-export function isUnnamedParkingGarage(props: Record<string, unknown>): boolean {
-  return (
-    String(props['amenity']  ?? '') === 'parking'      &&
-    String(props['parking']  ?? '') === 'multi-storey' &&
-    !props['name']                                     &&
-    String(props['building'] ?? '') === 'parking'
-  );
-}
-
-function ringToShape(ring: number[][]): THREE.Shape {
-  const shape = new THREE.Shape();
-  const [x0, z0] = projectLonLat(ring[0][0], ring[0][1]);
-  shape.moveTo(x0, -z0);
-  for (let i = 1; i < ring.length; i++) {
-    const [x, z] = projectLonLat(ring[i][0], ring[i][1]);
-    shape.lineTo(x, -z);
-  }
-  shape.closePath();
-  return shape;
-}
-
-function ringsToGeometry(rings: number[][][], y: number): THREE.BufferGeometry | null {
-  if (rings[0].length < 4) return null;
-  try {
-    const shape = ringToShape(rings[0]);
-    for (let i = 1; i < rings.length; i++) {
-      shape.holes.push(ringToShape(rings[i]) as unknown as THREE.Path);
-    }
-    const geo = new THREE.ShapeGeometry(shape);
-    geo.rotateX(-Math.PI / 2);
-    geo.translate(0, y, 0);
-    return geo;
-  } catch {
-    return null;
-  }
-}
 
 const STALL_TEX_SIZE = 256;
 
