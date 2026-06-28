@@ -3,13 +3,9 @@ import type { FeatureCollection, Feature, Polygon, MultiPolygon } from 'geojson'
 import { ringsToGeometry } from './util/shapes.js';
 import { isUnnamedParkingGarage } from './util/osmPredicates.js';
 import { makeStallTexture } from './util/stallTexture.js';
+import { PARKING_Y, PARKING_COLOR, STALL_WIDTH, STALL_DEPTH } from './util/parkingSurface.js';
 
 export { isUnnamedParkingGarage };
-
-const PARKING_Y     = 0.08;
-const PARKING_COLOR = 0x2a2826;  // dark asphalt, distinct from road asphalt (#444 in roads.ts)
-const STALL_WIDTH   = 2.5;        // world metres per stall column
-const STALL_DEPTH   = 5.0;        // world metres per stall row
 
 /**
  * Build flat asphalt surface geometry with stall-line markings for all OSM
