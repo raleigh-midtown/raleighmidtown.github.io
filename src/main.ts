@@ -110,7 +110,7 @@ async function init(): Promise<void> {
   buildChuysDecor(scene);
 
   // Midtown Park stage + perimeter benches
-  buildParkStage(scene);
+  buildParkStage(scene, mapData);
   scene.add(buildBenches(mapData));
 
   // Ground-level shop signs from OSM POI points (opacity managed by proximity in animate)

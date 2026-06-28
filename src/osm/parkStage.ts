@@ -1,18 +1,33 @@
 import * as THREE from 'three';
+import type { FeatureCollection, Feature } from 'geojson';
+import { projectLonLat } from './project.js';
+import { type Pt, getRings, polygonCentroid, edgeInwardNormal } from './util/geom.js';
 
-export function buildParkStage(scene: THREE.Scene): void {
+const MIDTOWN_PARK_NAME = 'Midtown Park';
+
+function findMidtownPark(geojson: FeatureCollection): Pt[] | null {
+  for (const f of geojson.features as Feature[]) {
+    const p = (f.properties ?? {}) as Record<string, unknown>;
+    if (String(p['name'] ?? '') !== MIDTOWN_PARK_NAME) continue;
+    const rings = getRings(f as Feature);
+    if (rings.length === 0) continue;
+    return rings[0].map(c => projectLonLat(c[0], c[1]));
+  }
+  return null;
+}
+
+export function buildParkStage(scene: THREE.Scene, geojson: FeatureCollection): void {
   const matPlatform = new THREE.MeshStandardMaterial({ color: 0xc8b89a, flatShading: true, roughness: 0.85 });
   const matRoof     = new THREE.MeshStandardMaterial({ color: 0x4a5a6a, flatShading: true, roughness: 0.7, metalness: 0.1 });
   const matColumn   = new THREE.MeshStandardMaterial({ color: 0x9a9490, flatShading: true, roughness: 0.8 });
 
-  // Stage placed on EAST side of Midtown Park, facing WEST toward Chuy's patio
-  // (Chuy's patio sits at the NW corner: px=251, pz=211).
-  // Park lawn east edge ~x=343. Stage centered north-south in the open lawn (z≈235).
-  // The stage is built inside a Group so it can be rotated to face west.
+  // Stage placed on the EAST side of Midtown Park, facing inward (toward Chuy's patio
+  // at the NW corner). Placement is derived from the park polygon east edge at runtime.
+  // The stage is built inside a Group so position and rotation can be set as a unit.
   const group = new THREE.Group();
 
-  // Local coords: stage faces +Z (audience south of platform), backwall at -Z.
-  // Group is then rotated -90° around Y so the stage faces -X (west) in world.
+  // Local coords: stage faces +Z (audience side), back wall at -Z.
+  // After rotation.y = atan2(inX, inZ), local +Z aligns with the inward normal.
   const PLAT_W = 14, PLAT_H = 1.2, PLAT_D = 9;
 
   // Platform
@@ -49,9 +64,43 @@ export function buildParkStage(scene: THREE.Scene): void {
     group.add(step);
   });
 
-  // Position on east side of park, rotate so front (+Z local) faces -X world (west)
-  group.position.set(335, 0, 235);
-  group.rotation.y = -Math.PI / 2;
+  // Derive placement from the Midtown Park polygon east edge.
+  // East edge = segment with the highest average X midpoint.
+  // Inset group origin inward by PLAT_D/2 so the back wall (local z = -PLAT_D/2)
+  // sits flush with the park boundary. Falls back to hardcoded values if OSM data
+  // is unavailable so the stage always renders.
+  const park = findMidtownPark(geojson);
+  if (park && park.length >= 4) {
+    const [cx, cz] = polygonCentroid(park);
+
+    // Find the segment with the highest average X midpoint (east edge).
+    let bestMidX = -Infinity;
+    let eastAx = 0, eastAz = 0, eastBx = 0, eastBz = 0;
+    for (let i = 0; i < park.length - 1; i++) {
+      const [ax, az] = park[i];
+      const [bx, bz] = park[i + 1];
+      const midX = (ax + bx) / 2;
+      if (midX > bestMidX) {
+        bestMidX = midX;
+        eastAx = ax; eastAz = az; eastBx = bx; eastBz = bz;
+      }
+    }
+
+    const edgeMidX = (eastAx + eastBx) / 2;
+    const edgeMidZ = (eastAz + eastBz) / 2;
+    const [inX, inZ] = edgeInwardNormal(eastAx, eastAz, eastBx, eastBz, cx, cz);
+
+    group.rotation.y = Math.atan2(inX, inZ);
+    group.position.set(
+      edgeMidX + inX * (PLAT_D / 2),
+      0,
+      edgeMidZ + inZ * (PLAT_D / 2),
+    );
+  } else {
+    // Fallback: hardcoded placement from original implementation.
+    group.position.set(335, 0, 235);
+    group.rotation.y = -Math.PI / 2;
+  }
 
   scene.add(group);
 }
