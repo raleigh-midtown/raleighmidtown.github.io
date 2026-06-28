@@ -1,7 +1,7 @@
 import type { FeatureCollection } from 'geojson';
 import { BBOX } from './project.js';
 
-const CACHE_KEY = 'midtown-osm-cache';
+const CACHE_KEY = 'midtown-osm-cache-v2';
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const FALLBACK_URL = '/data/midtown-fallback.geojson';
 const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
@@ -63,10 +63,14 @@ function writeCache(data: FeatureCollection): void {
 
 function buildOverpassQuery(): string {
   const { south, west, north, east } = BBOX;
-  return `[out:json][timeout:30];
+  return `[out:json][timeout:90];
 (
   way["building"](${south},${west},${north},${east});
   relation["building"](${south},${west},${north},${east});
+  way["highway"~"^(motorway|trunk|primary|secondary|tertiary|residential|unclassified|service|living_street)$"](${south},${west},${north},${east});
+  way["leisure"="park"](${south},${west},${north},${east});
+  way["landuse"~"^(grass|recreation_ground|park|garden|meadow)$"](${south},${west},${north},${east});
+  way["natural"~"^(wood|grassland)$"](${south},${west},${north},${east});
 );
 out body;
 >;
@@ -137,7 +141,7 @@ async function loadFallback(): Promise<FeatureCollection> {
  * Non-critical — caller should render roads only when this resolves successfully.
  */
 export async function fetchRoads(): Promise<FeatureCollection | null> {
-  const cacheKey = 'midtown-roads-cache';
+  const cacheKey = 'midtown-roads-cache-v2';
   try {
     const raw = localStorage.getItem(cacheKey);
     if (raw) {

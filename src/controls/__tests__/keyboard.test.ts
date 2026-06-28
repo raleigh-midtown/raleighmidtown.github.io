@@ -63,4 +63,32 @@ describe('KeyboardState', () => {
     keyup('w');
     expect(kb.isMoving()).toBe(false);
   });
+
+  it('consumeJump returns true once per Space press, then false', () => {
+    keydown(' ');
+    expect(kb.consumeJump()).toBe(true);
+    expect(kb.consumeJump()).toBe(false);
+    keyup(' ');
+  });
+
+  it('consumeJump returns false without any Space press', () => {
+    expect(kb.consumeJump()).toBe(false);
+  });
+
+  it('holding Space does not auto-repeat jumps', () => {
+    keydown(' ');
+    expect(kb.consumeJump()).toBe(true);
+    // Simulate a key-repeat keydown (browser fires more keydowns while held)
+    keydown(' ');
+    keydown(' ');
+    expect(kb.consumeJump()).toBe(false);
+    keyup(' ');
+  });
+
+  it('re-pressing Space after release fires another jump', () => {
+    keydown(' '); kb.consumeJump(); keyup(' ');
+    keydown(' ');
+    expect(kb.consumeJump()).toBe(true);
+    keyup(' ');
+  });
 });

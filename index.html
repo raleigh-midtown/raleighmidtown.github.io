@@ -116,6 +116,21 @@
         cursor: pointer;
         display: none;
       }
+      #view-toggle-btn {
+        position: fixed;
+        top: 24px;
+        right: 24px;
+        z-index: 50;
+        background: rgba(0,0,0,0.75);
+        color: #fff;
+        border: 1px solid rgba(255,255,255,0.4);
+        font-family: system-ui, sans-serif;
+        font-size: 13px;
+        padding: 10px 16px;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      #view-toggle-btn:hover { background: rgba(0,0,0,0.9); }
       #toast {
         position: fixed;
         bottom: 24px;
@@ -159,10 +174,13 @@
       <button id="mobile-banner-close">✕</button>
     </div>
     <button id="gyro-btn">Enable Gyroscope</button>
+    <button id="view-toggle-btn">Aerial view</button>
     <div id="toast"></div>
     <div id="controls-hint">
       WASD / Arrow keys — move<br>
-      Mouse — look (coming soon)
+      Space — jump<br>
+      Drag — tilt (ground) / pan (aerial)<br>
+      Scroll — zoom (aerial)
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

@@ -14,21 +14,48 @@ function classifyBuilding(props: Record<string, unknown>): number {
   return 2;
 }
 
+// OSM name → confirmed real-world height (m) for North Hills landmarks
+const KNOWN_HEIGHTS: Record<string, number> = {
+  'The Eastern':                       115,
+  'Captrust Tower':                     79,
+  'Advanced Auto Parts Tower':          78,
+  'Bank of America Tower':              63,
+  'Midtown Plaza':                      55,
+  'Park Central North Hills':           56,
+  'Hyatt House North Hills':            24,
+  'Midtown Green':                      21,
+  'Park & Market North Hills':          21,
+  'Renaissance Raleigh North Hills Hotel': 35,
+  'Landmark Center':                    18,
+  'The Lassiter at North Hills':        14,
+  'Restoration Hardware':               12,
+};
+
 /**
  * Extract height in meters from OSM properties.
- * Priority: height tag → building:levels * 3.5 → 10m default
+ * Priority: known-name lookup → explicit height tag → levels × 3.5 → type default
  */
 function extractHeight(props: Record<string, unknown>): number {
+  const name = String(props['name'] ?? '');
+  if (name && KNOWN_HEIGHTS[name] !== undefined) return KNOWN_HEIGHTS[name];
+
   const heightRaw = props['height'];
   if (heightRaw !== undefined && heightRaw !== null) {
     const h = parseFloat(String(heightRaw));
     if (!isNaN(h) && h > 0) return h;
   }
+
   const levelsRaw = props['building:levels'];
   if (levelsRaw !== undefined && levelsRaw !== null) {
     const l = parseFloat(String(levelsRaw));
     if (!isNaN(l) && l > 0) return l * 3.5;
   }
+
+  // Type-based fallback so apartments/offices aren't all 10m boxes
+  const building = String(props['building'] ?? '').toLowerCase();
+  if (['apartments', 'residential'].includes(building)) return 18;
+  if (['commercial', 'office'].includes(building)) return 22;
+  if (['retail'].includes(building)) return 8;
   return 10;
 }
 
@@ -132,6 +159,8 @@ export function extrudeBuildings(geojson: FeatureCollection): THREE.BufferGeomet
 
   for (const feature of geojson.features as Feature[]) {
     const props = (feature.properties ?? {}) as Record<string, unknown>;
+    // Skip features that are not buildings
+    if (!props['building'] && !props['building:part']) continue;
     const height = extractHeight(props);
     const buildingType = classifyBuilding(props);
     const geomType = feature.geometry?.type;
@@ -202,6 +231,8 @@ export function extrudeBuildingBuckets(geojson: FeatureCollection): BuildingBuck
 
   for (const feature of geojson.features as Feature[]) {
     const props = (feature.properties ?? {}) as Record<string, unknown>;
+    // Skip features that are not buildings
+    if (!props['building'] && !props['building:part']) continue;
     const height = extractHeight(props);
     const buildingType = classifyBuilding(props);
     const band = toHeightBand(height);

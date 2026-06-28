@@ -43,4 +43,46 @@ describe('CollisionSystem', () => {
     const correctionLength = result.length();
     expect(correctionLength).toBeCloseTo(0, 5);
   });
+
+  it('raycastDown from above the ground plane returns origin.y', () => {
+    const system = new CollisionSystem();
+    expect(system.raycastDown(new THREE.Vector3(0, 5, 0), 10)).toBe(5);
+  });
+
+  it('raycastDown returns null when ground plane is out of range', () => {
+    const system = new CollisionSystem();
+    expect(system.raycastDown(new THREE.Vector3(0, 5, 0), 2)).toBeNull();
+  });
+
+  it('raycastDown returns null below the ground plane', () => {
+    const system = new CollisionSystem();
+    expect(system.raycastDown(new THREE.Vector3(0, -1, 0), 5)).toBeNull();
+  });
+
+  it('raycastDown hits a building roof before the implicit plane', () => {
+    const system = new CollisionSystem();
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(10, 1, 10));
+    roof.position.set(0, 5.5, 0);
+    roof.updateMatrixWorld(true);
+    system.build(roof);
+    expect(system.raycastDown(new THREE.Vector3(0, 20, 0), 50)).toBeCloseTo(14, 1);
+  });
+
+  it('raycastUp returns null in open sky', () => {
+    const system = new CollisionSystem();
+    const box = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1));
+    box.position.set(100, 100, 100);
+    box.updateMatrixWorld(true);
+    system.build(box);
+    expect(system.raycastUp(new THREE.Vector3(0, 0, 0), 50)).toBeNull();
+  });
+
+  it('raycastUp hits geometry overhead', () => {
+    const system = new CollisionSystem();
+    const ceiling = new THREE.Mesh(new THREE.BoxGeometry(10, 1, 10));
+    ceiling.position.set(0, 10, 0);
+    ceiling.updateMatrixWorld(true);
+    system.build(ceiling);
+    expect(system.raycastUp(new THREE.Vector3(0, 0, 0), 20)).toBeCloseTo(9.5, 1);
+  });
 });

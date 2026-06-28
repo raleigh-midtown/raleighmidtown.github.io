@@ -6,6 +6,10 @@ THREE.Mesh.prototype.raycast = acceleratedRaycast;
 
 export class CollisionSystem {
   private bvh: MeshBVH | null = null;
+  // Scratch storage so raycast helpers don't allocate per frame.
+  private readonly _scratchDown = new THREE.Vector3(0, -1, 0);
+  private readonly _scratchUp   = new THREE.Vector3(0,  1, 0);
+  private readonly _scratchRay  = new THREE.Ray();
 
   /** Accept one or more meshes — merges their geometries into a single BVH in world space. */
   build(...meshes: THREE.Mesh[]): void {
@@ -35,6 +39,41 @@ export class CollisionSystem {
     dir.divideScalar(maxDist);
     const ray = new THREE.Ray(from, dir);
     const hit = this.bvh.raycastFirst(ray, THREE.DoubleSide);
+    if (hit && hit.distance <= maxDist) return hit.distance;
+    return null;
+  }
+
+  /**
+   * Distance from `origin` to nearest surface beneath it, within `maxDist` metres.
+   * Combines the buildings BVH with an implicit flat ground plane at y=0
+   * (sidewalks / roads / stage decor aren't in the BVH today).
+   * Returns null when nothing is in range.
+   */
+  raycastDown(origin: THREE.Vector3, maxDist: number): number | null {
+    let bvhHit: number | null = null;
+    if (this.bvh) {
+      this._scratchRay.origin.copy(origin);
+      this._scratchRay.direction.copy(this._scratchDown);
+      const hit = this.bvh.raycastFirst(this._scratchRay, THREE.DoubleSide);
+      if (hit && hit.distance <= maxDist) bvhHit = hit.distance;
+    }
+    // Implicit ground plane at y=0
+    let planeHit: number | null = null;
+    if (origin.y >= 0 && origin.y <= maxDist) planeHit = origin.y;
+    if (bvhHit === null) return planeHit;
+    if (planeHit === null) return bvhHit;
+    return Math.min(bvhHit, planeHit);
+  }
+
+  /**
+   * Distance from `origin` to nearest surface above it, within `maxDist` metres.
+   * BVH only — there's no overhead implicit ground plane.
+   */
+  raycastUp(origin: THREE.Vector3, maxDist: number): number | null {
+    if (!this.bvh) return null;
+    this._scratchRay.origin.copy(origin);
+    this._scratchRay.direction.copy(this._scratchUp);
+    const hit = this.bvh.raycastFirst(this._scratchRay, THREE.DoubleSide);
     if (hit && hit.distance <= maxDist) return hit.distance;
     return null;
   }

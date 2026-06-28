@@ -14,27 +14,69 @@ export interface CharacterHandle {
   isPlaceholder: boolean;
 }
 
+const ANIMATIONS_URL = '/models/animations.glb';
+
+function loadGltf(url: string): Promise<THREE.AnimationClip[]> {
+  return new Promise((resolve) => {
+    new GLTFLoader().load(
+      url,
+      (gltf) => resolve(gltf.animations ?? []),
+      undefined,
+      () => resolve([]),
+    );
+  });
+}
+
+// Mixamo locomotion clips include Hips position keyframes (root motion). The character
+// controller already moves the root Object3D, so the in-skeleton hip translation
+// double-counts and slides the mesh off-camera. Strip those tracks before binding.
+function stripRootMotion(clips: THREE.AnimationClip[]): THREE.AnimationClip[] {
+  return clips.map(clip => {
+    const cleaned = clip.clone();
+    // Drop Hips position (root motion, controller handles XZ) AND Hips quaternion
+    // (Soldier's bind pose orients hips differently than Michelle's — applying
+    // Soldier's hip rotation flips Michelle upside down).
+    cleaned.tracks = cleaned.tracks.filter(
+      t => !/Hips\.(position|quaternion)$/i.test(t.name),
+    );
+    return cleaned;
+  });
+}
+
 export async function loadCharacter(scene: THREE.Scene): Promise<CharacterHandle> {
   return new Promise((resolve) => {
     const loader = new GLTFLoader();
     loader.load(
       '/models/character.glb',
-      (gltf) => {
-        const model = gltf.scene;
+      async (gltf) => {
+        const mesh = gltf.scene;
 
         // Normalize GLB to ~1.8 m tall regardless of export units.
-        const box = new THREE.Box3().setFromObject(model);
-        const modelHeight = box.max.y - box.min.y;
-        if (modelHeight > 0) model.scale.setScalar(1.8 / modelHeight);
+        const box = new THREE.Box3().setFromObject(mesh);
+        const meshHeight = box.max.y - box.min.y;
+        if (meshHeight > 0) mesh.scale.setScalar(1.8 / meshHeight);
 
+        // Mixamo characters export facing +Z, but the character controller treats
+        // -Z as "forward" (W key). Wrap in a Group whose interior is rotated 180°
+        // so the controller's yaw convention stays unchanged.
+        const model = new THREE.Group();
+        mesh.rotation.y = Math.PI;
+        model.add(mesh);
         model.position.set(0, 0, 0);
         scene.add(model);
 
-        const mixer = new THREE.AnimationMixer(model);
-        const clips = gltf.animations;
+        // Pool of clips: the character's own + an external animation pack (e.g., Soldier
+        // for Mixamo-compatible idle/walk/run when the character ships none of its own).
+        const USABLE = /(idle|walk|run|jog|sprint|stand)/i;
+        const ownClips = (gltf.animations ?? []).filter(c => USABLE.test(c.name));
+        const externalClipsRaw = ownClips.length === 0 ? await loadGltf(ANIMATIONS_URL) : [];
+        const externalClips = stripRootMotion(externalClipsRaw.filter(c => USABLE.test(c.name)));
+        const clips = ownClips.length > 0 ? ownClips : externalClips;
 
-        // Try to find clips by name first (Mixamo names may vary)
-        // then fall back to index
+        const hasAnimations = clips.length > 0;
+        // Bind mixer to the inner skinned mesh (skeleton lives there), not the wrapper Group.
+        const mixer = hasAnimations ? new THREE.AnimationMixer(mesh) : null;
+
         const findClip = (names: string[], fallbackIndex: number): THREE.AnimationClip | null => {
           const byName = names.reduce<THREE.AnimationClip | null>(
             (found, name) => found ?? THREE.AnimationClip.findByName(clips, name),
@@ -43,13 +85,13 @@ export async function loadCharacter(scene: THREE.Scene): Promise<CharacterHandle
           return byName ?? clips[fallbackIndex] ?? null;
         };
 
-        const idleClip = findClip(['Idle', 'idle', 'TPose', 'mixamo.com'], 0);
-        const walkClip = findClip(['Walk', 'walk', 'Walking'], 1) ?? idleClip;
-        const runClip  = findClip(['Run', 'run', 'Running', 'running', 'Jog', 'jog', 'Sprint', 'sprint'], 2) ?? walkClip;
+        const idleClip = hasAnimations ? findClip(['Idle', 'idle', 'mixamo.com'], 0) : null;
+        const walkClip = hasAnimations ? (findClip(['Walk', 'walk', 'Walking'], 1) ?? idleClip) : null;
+        const runClip  = hasAnimations ? (findClip(['Run', 'run', 'Running', 'running', 'Jog', 'jog', 'Sprint', 'sprint'], 2) ?? walkClip) : null;
 
-        const idleAction = idleClip ? mixer.clipAction(idleClip) : null;
-        const walkAction = walkClip ? mixer.clipAction(walkClip) : null;
-        const runAction  = runClip  ? mixer.clipAction(runClip)  : null;
+        const idleAction = mixer && idleClip ? mixer.clipAction(idleClip) : null;
+        const walkAction = mixer && walkClip ? mixer.clipAction(walkClip) : null;
+        const runAction  = mixer && runClip  ? mixer.clipAction(runClip)  : null;
 
         idleAction?.play();
 
