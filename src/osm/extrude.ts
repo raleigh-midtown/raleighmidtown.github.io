@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import type { FeatureCollection, Feature, Polygon, MultiPolygon } from 'geojson';
 import { projectLonLat } from './project.js';
+import { isUnnamedParkingGarage } from './parkingLots.js';
 
 /**
  * Classify building type from OSM tags.
@@ -161,6 +162,8 @@ export function extrudeBuildings(geojson: FeatureCollection): THREE.BufferGeomet
     const props = (feature.properties ?? {}) as Record<string, unknown>;
     // Skip features that are not buildings
     if (!props['building'] && !props['building:part']) continue;
+    // Unnamed parking garages are rendered as flat surface lots by parkingLots.ts.
+    if (isUnnamedParkingGarage(props)) continue;
     const height = extractHeight(props);
     const buildingType = classifyBuilding(props);
     const geomType = feature.geometry?.type;
@@ -233,6 +236,8 @@ export function extrudeBuildingBuckets(geojson: FeatureCollection): BuildingBuck
     const props = (feature.properties ?? {}) as Record<string, unknown>;
     // Skip features that are not buildings
     if (!props['building'] && !props['building:part']) continue;
+    // Unnamed parking garages are rendered as flat surface lots by parkingLots.ts.
+    if (isUnnamedParkingGarage(props)) continue;
     const height = extractHeight(props);
     const buildingType = classifyBuilding(props);
     const band = toHeightBand(height);

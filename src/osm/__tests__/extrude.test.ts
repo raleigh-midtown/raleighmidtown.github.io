@@ -140,4 +140,52 @@ describe('extrudeBuildings', () => {
     expect(merged).toBeInstanceOf(THREE.BufferGeometry);
     merged.dispose();
   });
+
+  it('excludes unnamed parking garage (amenity=parking building=parking no name)', () => {
+    // Only feature is an unnamed parking garage — should be skipped, throwing no-buildings error.
+    const geojson: FeatureCollection = {
+      type: 'FeatureCollection',
+      features: [{
+        type: 'Feature',
+        properties: { amenity: 'parking', parking: 'multi-storey', building: 'parking' },
+        geometry: {
+          type: 'Polygon',
+          coordinates: [[
+            [-78.6405, 35.8380],
+            [-78.6395, 35.8380],
+            [-78.6395, 35.8390],
+            [-78.6405, 35.8390],
+            [-78.6405, 35.8380],
+          ]],
+        },
+      }],
+    };
+    expect(() => extrudeBuildings(geojson)).toThrow('No building geometries');
+  });
+
+  it('still extrudes named parking building (e.g. Advanced Auto Parts Tower)', () => {
+    const geojson: FeatureCollection = {
+      type: 'FeatureCollection',
+      features: [{
+        type: 'Feature',
+        properties: {
+          amenity: 'parking', parking: 'multi-storey',
+          building: 'parking', name: 'Advanced Auto Parts Tower',
+        },
+        geometry: {
+          type: 'Polygon',
+          coordinates: [[
+            [-78.6405, 35.8380],
+            [-78.6395, 35.8380],
+            [-78.6395, 35.8390],
+            [-78.6405, 35.8390],
+            [-78.6405, 35.8380],
+          ]],
+        },
+      }],
+    };
+    const merged = extrudeBuildings(geojson);
+    expect(merged).toBeInstanceOf(THREE.BufferGeometry);
+    merged.dispose();
+  });
 });
