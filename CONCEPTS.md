@@ -29,10 +29,11 @@ Coplanar ground geometries are separated vertically to avoid z-fighting from hig
 - ground plane: `y = 0`
 - greenspace (parks, grass): `y = 0.02..0.04`
 - sidewalk: `y = 0.05`
+- parking surface: `y = 0.08` (rendered above sidewalk, below road, to prevent z-fighting at aerial altitude)
 - road asphalt: `y = 0.10`
 - lane stripe: `y = 0.14`
 
-Hardcoded throughout `src/osm/{roads,greenspace,streetscape}.ts`. New ground-level layers must slot into this stack.
+New ground-level layers must slot into this stack.
 
 ### View modes
 The CameraRig operates in two named modes — `ground` (chase cam following the character) and `aerial` (top-down bird's-eye with drag-to-pan and wheel-zoom). Switching is exposed via the `#view-toggle-btn` UI button. The `aerialPan` offset is reset whenever the mode flips to aerial.

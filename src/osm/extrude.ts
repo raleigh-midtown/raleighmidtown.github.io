@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import type { FeatureCollection, Feature, Polygon, MultiPolygon } from 'geojson';
-import { projectLonLat } from './project.js';
+import { isUnnamedParkingGarage } from './util/osmPredicates.js';
+import { ringToShape } from './util/shapes.js';
 
 /**
  * Classify building type from OSM tags.
@@ -57,23 +58,6 @@ function extractHeight(props: Record<string, unknown>): number {
   if (['commercial', 'office'].includes(building)) return 22;
   if (['retail'].includes(building)) return 8;
   return 10;
-}
-
-/**
- * Build a THREE.Shape from an array of [lon, lat] ring coordinates.
- */
-function ringToShape(ring: number[][]): THREE.Shape {
-  const shape = new THREE.Shape();
-  const [x0, z0] = projectLonLat(ring[0][0], ring[0][1]);
-  // Shape is in XY plane; after rotateX(-π/2) shape Y becomes world -Z.
-  // We want world Z = z, so shape Y must be -z.
-  shape.moveTo(x0, -z0);
-  for (let i = 1; i < ring.length; i++) {
-    const [x, z] = projectLonLat(ring[i][0], ring[i][1]);
-    shape.lineTo(x, -z);
-  }
-  shape.closePath();
-  return shape;
 }
 
 /**
@@ -161,6 +145,8 @@ export function extrudeBuildings(geojson: FeatureCollection): THREE.BufferGeomet
     const props = (feature.properties ?? {}) as Record<string, unknown>;
     // Skip features that are not buildings
     if (!props['building'] && !props['building:part']) continue;
+    // Unnamed parking garages are rendered as flat surface lots by parkingLots.ts.
+    if (isUnnamedParkingGarage(props)) continue;
     const height = extractHeight(props);
     const buildingType = classifyBuilding(props);
     const geomType = feature.geometry?.type;
@@ -233,6 +219,8 @@ export function extrudeBuildingBuckets(geojson: FeatureCollection): BuildingBuck
     const props = (feature.properties ?? {}) as Record<string, unknown>;
     // Skip features that are not buildings
     if (!props['building'] && !props['building:part']) continue;
+    // Unnamed parking garages are rendered as flat surface lots by parkingLots.ts.
+    if (isUnnamedParkingGarage(props)) continue;
     const height = extractHeight(props);
     const buildingType = classifyBuilding(props);
     const band = toHeightBand(height);
