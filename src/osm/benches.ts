@@ -1,14 +1,12 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import type { FeatureCollection, Feature } from 'geojson';
-import { projectLonLat } from './project.js';
+import type { FeatureCollection } from 'geojson';
 import {
-  type Pt,
   collectBuildingBoxes,
+  findBuildingByName,
   isInsideAnyBuilding,
   edgeInwardNormal,
   edgeOutwardNormal,
-  getRings,
   pointInRing,
   polygonCentroid,
 } from './util/geom.js';
@@ -78,17 +76,6 @@ function finalizeBenchGroup(geos: THREE.BufferGeometry[], group: THREE.Group): v
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   group.add(mesh);
-}
-
-function findBuildingByName(geojson: FeatureCollection, name: string): Pt[] | null {
-  for (const f of geojson.features as Feature[]) {
-    const p = (f.properties ?? {}) as Record<string, unknown>;
-    if (String(p['name'] ?? '') !== name) continue;
-    const rings = getRings(f as Feature);
-    if (rings.length === 0) continue;
-    return rings[0].map(c => projectLonLat(c[0], c[1]));
-  }
-  return null;
 }
 
 /**
