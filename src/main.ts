@@ -20,7 +20,8 @@ import { buildChuysDecor } from './osm/chuysDecor';
 import { buildFences } from './osm/fences';
 import { buildStreetscape } from './osm/streetscape';
 import { buildParkStage } from './osm/parkStage';
-import { buildBenches } from './osm/benches';
+import { buildParkingLots } from './osm/parkingLots';
+import { buildBenches, buildStreetBenches } from './osm/benches';
 
 const scene = new THREE.Scene();
 
@@ -76,6 +77,9 @@ async function init(): Promise<void> {
   greenGroup.children.forEach(c => { (c as THREE.Mesh).receiveShadow = true; });
   scene.add(greenGroup);
 
+  // Surface parking lots — flat asphalt with stall-line texture, Y=0.08
+  scene.add(buildParkingLots(mapData));
+
   // Roads
   const roadGroup = buildRoadsGroup(mapData);
   scene.add(roadGroup);
@@ -109,9 +113,10 @@ async function init(): Promise<void> {
   // Chuy's outdoor patio — orange barrel-arch canopy at NW corner of Midtown Park
   buildChuysDecor(scene);
 
-  // Midtown Park stage + perimeter benches
+  // Midtown Park stage + perimeter benches + street-side benches near P&M and The Eastern
   buildParkStage(scene, mapData);
   scene.add(buildBenches(mapData));
+  scene.add(buildStreetBenches(mapData));
 
   // Ground-level shop signs from OSM POI points (opacity managed by proximity in animate)
   const shopSignGroup = buildShopSigns(mapData);
