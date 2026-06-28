@@ -65,10 +65,15 @@ export function buildParkStage(scene: THREE.Scene, geojson: FeatureCollection): 
   });
 
   // Derive placement from the Midtown Park polygon east edge.
-  // East edge = segment with the highest average X midpoint.
-  // Inset group origin inward by PLAT_D/2 so the back wall (local z = -PLAT_D/2)
-  // sits flush with the park boundary. Falls back to hardcoded values if OSM data
-  // is unavailable so the stage always renders.
+  // Derive placement from the Midtown Park polygon east edge (highest average-X
+  // segment midpoint). Inset group origin inward by PLAT_D/2 so the back wall
+  // (local z = -PLAT_D/2) sits flush with the park boundary.
+  // Hardcoded fallback fires when: OSM data is missing, the polygon has < 4
+  // vertices, or the winning east edge is zero-length (coincident OSM nodes →
+  // edgeInwardNormal returns [-0,-0] → atan2(-0,-0) = -π, facing north).
+  group.position.set(335, 0, 235);   // default — overridden below when derivable
+  group.rotation.y = -Math.PI / 2;
+
   const park = findMidtownPark(geojson);
   if (park && park.length >= 4) {
     const [cx, cz] = polygonCentroid(park);
@@ -90,16 +95,16 @@ export function buildParkStage(scene: THREE.Scene, geojson: FeatureCollection): 
     const edgeMidZ = (eastAz + eastBz) / 2;
     const [inX, inZ] = edgeInwardNormal(eastAx, eastAz, eastBx, eastBz, cx, cz);
 
-    group.rotation.y = Math.atan2(inX, inZ);
-    group.position.set(
-      edgeMidX + inX * (PLAT_D / 2),
-      0,
-      edgeMidZ + inZ * (PLAT_D / 2),
-    );
-  } else {
-    // Fallback: hardcoded placement from original implementation.
-    group.position.set(335, 0, 235);
-    group.rotation.y = -Math.PI / 2;
+    // Guard against zero-length edge (coincident OSM nodes): edgeInwardNormal
+    // returns [-0,-0] in that case, making atan2(-0,-0) = -π (faces north).
+    if (Math.hypot(inX, inZ) >= 1e-6) {
+      group.rotation.y = Math.atan2(inX, inZ);
+      group.position.set(
+        edgeMidX + inX * (PLAT_D / 2),
+        0,
+        edgeMidZ + inZ * (PLAT_D / 2),
+      );
+    }
   }
 
   scene.add(group);
