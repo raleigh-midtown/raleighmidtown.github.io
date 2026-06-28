@@ -21,6 +21,7 @@ import { buildFences } from './osm/fences';
 import { buildStreetscape } from './osm/streetscape';
 import { buildParkStage } from './osm/parkStage';
 import { buildParkingLots } from './osm/parkingLots';
+import { buildRoadParking } from './osm/roadParking';
 import { buildBenches, buildStreetBenches } from './osm/benches';
 
 const scene = new THREE.Scene();
@@ -79,6 +80,10 @@ async function init(): Promise<void> {
 
   // Surface parking lots — flat asphalt with stall-line texture, Y=0.08
   scene.add(buildParkingLots(mapData));
+
+  // Road-level parking — apron + stall stripes + parked cars along the Park &
+  // Market frontage facing The Eastern (decorative; cars stay out of the BVH)
+  scene.add(buildRoadParking(mapData));
 
   // Roads
   const roadGroup = buildRoadsGroup(mapData);
