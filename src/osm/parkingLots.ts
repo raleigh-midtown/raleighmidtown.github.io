@@ -30,9 +30,8 @@ export function buildParkingLots(geojson: FeatureCollection): THREE.Group {
       // ShapeGeometry stores raw shape-space world-metre coordinates as UVs (not
       // normalised to [0,1]). repeat = 1/stallSize tiles one stall per stall-width
       // metres across the lot — correct regardless of individual polygon dimensions.
+      // clone() preserves wrapS/wrapT, which makeStallTexture already sets to RepeatWrapping.
       map = texBase.clone() as THREE.CanvasTexture;
-      map.wrapS = THREE.RepeatWrapping;
-      map.wrapT = THREE.RepeatWrapping;
       map.repeat.set(1 / STALL_WIDTH, 1 / STALL_DEPTH);
       map.needsUpdate = true;
     }
