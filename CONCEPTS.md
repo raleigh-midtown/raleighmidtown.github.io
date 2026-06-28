@@ -29,6 +29,7 @@ Coplanar ground geometries are separated vertically to avoid z-fighting from hig
 - ground plane: `y = 0`
 - greenspace (parks, grass): `y = 0.02..0.04`
 - sidewalk: `y = 0.05`
+- parking surface: `y = 0.08`, `renderOrder: 1` (stall lines baked into canvas texture — no separate Y entry)
 - road asphalt: `y = 0.10`
 - lane stripe: `y = 0.14`
 
