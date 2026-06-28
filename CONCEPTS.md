@@ -19,6 +19,9 @@ Decorative outdoor seating deck east of the Chuy's restaurant building. Centered
 ### Park stage
 Performance pavilion at the east end of Midtown Park, positioned across the lawn from Chuy's patio. Built inside a `THREE.Group` so the whole pavilion can be re-oriented with a single `rotation.y`; currently rotated `-π/2` to face west.
 
+### Road-level parking
+Ground-level surface parking placed along the street-facing frontage of Park & Market North Hills — the single longest perimeter edge whose outward normal points `+Z` (toward The Eastern and the frontage road). An asphalt apron with painted stall stripes (shared `makeStallTexture`, sitting on the `y = 0.08` parking surface layer) carries a perpendicular row of low-poly parked cars (one `InstancedMesh`, white base material tinted per-instance via `setColorAt`). Offset outward by a sidewalk gap and bounded in depth so it leaves walking space against the building and keeps the road clear. Distinct from the multi-storey garage surface lots (the unnamed `building=parking` footprints rendered by `buildParkingLots`). Decorative — the car mesh is never added to the BVH, so the character walks through it.
+
 ## Coordinate conventions
 
 ### Scene XZ frame

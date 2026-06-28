@@ -41,6 +41,8 @@ threejs-midtownraleigh/
 │   │   ├── trees.ts                     # InstancedMesh tree forest
 │   │   ├── fences.ts                    # iron perimeter fences around buildings
 │   │   ├── parkingLots.ts               # flat asphalt surface lots + isUnnamedParkingGarage predicate (shared with extrude.ts)
+│   │   ├── roadParking.ts               # road-level parking apron + angled parked cars (Park & Market North Hills frontage)
+│   │   ├── parkedCars.ts                # low-poly parked-car geometry + per-instance colour palette
 │   │   ├── benches.ts                   # Midtown Park benches + street benches for named buildings
 │   │   ├── chuysDecor.ts                # Chuy's patio (3 barrel arches + flat roof + columns)
 │   │   ├── parkStage.ts                 # Midtown Park performance stage (Group-wrapped, rotatable)
@@ -48,7 +50,11 @@ threejs-midtownraleigh/
 │   │   ├── shopSigns.ts                 # POI sprites for shops
 │   │   ├── buildingDetails.ts           # balconies, railings, doors
 │   │   └── util/
-│   │       └── geom.ts                  # shared polygon geometry helpers (pointInRing, isInsideAnyBuilding, polygonCentroid, edgeOutwardNormal, edgeInwardNormal, collectBuildingBoxes)
+│   │       ├── geom.ts                  # shared polygon geometry helpers (pointInRing, isInsideAnyBuilding, polygonCentroid, edgeOutwardNormal, edgeInwardNormal, collectBuildingBoxes, findBuildingByName)
+│   │       ├── osmPredicates.ts         # shared OSM tag predicates (isUnnamedParkingGarage)
+│   │       ├── parkingSurface.ts        # shared parking-surface constants (PARKING_Y, PARKING_COLOR, STALL_WIDTH, STALL_DEPTH)
+│   │       ├── shapes.ts                # ring → ShapeGeometry helpers (world-metre UVs)
+│   │       └── stallTexture.ts          # CanvasTexture stall-stripe painter (shared by parkingLots + roadParking)
 │   ├── character/
 │   │   ├── loader.ts                    # GLTFLoader + Group-wrapper (Mixamo faces +Z; controller wants -Z)
 │   │   └── controller.ts                # state machine (idle/walk/run × grounded/airborne), jump physics, tuck-pose blend
@@ -79,7 +85,7 @@ Coplanar ground layers are vertically separated to avoid z-fighting from the aer
 | road asphalt | 0.10 |
 | lane stripe | 0.14 |
 
-Hard-coded throughout `src/osm/{roads,greenspace,streetscape,parkingLots}.ts`. New ground-level layers must slot into this stack.
+Hard-coded in the layer's owning module (`roads.ts`, `greenspace.ts`, `streetscape.ts`); the parking-surface layer (`PARKING_Y`) is centralised in `util/parkingSurface.ts` and shared by `parkingLots.ts` + `roadParking.ts`. New ground-level layers must slot into this stack.
 
 See [CONCEPTS.md](CONCEPTS.md) for full glossary including named scene entities (Midtown Park, Midtown Green, Park Central, Chuy's patio, Park stage) and character state semantics.
 

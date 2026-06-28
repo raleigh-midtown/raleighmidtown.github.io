@@ -13,6 +13,22 @@ export function getRings(feature: Feature): number[][][] {
 }
 
 /**
+ * Find the first feature with a matching `name` property and return its outer
+ * ring projected to scene metres. Returns null when no feature matches or the
+ * match has no usable ring. Shared by benches and road-parking placement.
+ */
+export function findBuildingByName(geojson: FeatureCollection, name: string): Pt[] | null {
+  for (const f of geojson.features as Feature[]) {
+    const p = (f.properties ?? {}) as Record<string, unknown>;
+    if (String(p['name'] ?? '') !== name) continue;
+    const rings = getRings(f as Feature);
+    if (rings.length === 0) continue;
+    return rings[0].map(c => projectLonLat(c[0], c[1]));
+  }
+  return null;
+}
+
+/**
  * Centroid of a closed polygon ring (last vertex == first vertex).
  *
  * Uses the shoelace area-weighted formula — robust against vertex clustering
