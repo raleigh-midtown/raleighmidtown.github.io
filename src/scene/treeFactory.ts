@@ -15,8 +15,28 @@ export interface TreePrototype {
   normScale: number;
 }
 
-const DEFAULT_PRESET = 'Oak Medium';
-const TARGET_HEIGHT = 9; // approximate tree height in scene units (tune in dev)
+const DEFAULT_PRESET = 'Oak Small'; // lighter than Medium — fewer leaf cards/branches for perf
+const TARGET_HEIGHT = 20; // approximate tree height in scene units (tune in dev)
+
+// Shadow casting is the dominant GPU cost at scene scale (hundreds of instanced
+// trees in the shadow pass). Branches cast; alpha-tested leaf cards do NOT — the
+// leaf depth pass with alpha is by far the most expensive part. Flip these to
+// trade FPS for fidelity.
+const BRANCH_CAST_SHADOW = true;
+const LEAF_CAST_SHADOW = false;
+
+// Prototypes are expensive to generate (ez-tree builds full geometry) and are
+// identical for every consumer. Generate one shared set lazily and reuse it
+// across all tree sources — avoids regenerating ~13 trees across modules and
+// lets the GPU upload each geometry once.
+const SHARED_COUNT = 4;
+const SHARED_SEED = 24601;
+let _sharedPrototypes: TreePrototype[] | null = null;
+
+export function getSharedTreePrototypes(): TreePrototype[] {
+  if (!_sharedPrototypes) _sharedPrototypes = generateTreePrototypes(SHARED_COUNT, SHARED_SEED);
+  return _sharedPrototypes;
+}
 
 const LEAF_TINTS = [0xffffff, 0xe6f0d4, 0xd2e3b0].map((c) => new THREE.Color(c));
 
@@ -45,12 +65,15 @@ function patchInstancing(mat: THREE.Material): THREE.Material {
   mat.onBeforeCompile = (shader, renderer) => {
     if (typeof prev === 'function') prev(shader, renderer);
     const marker = 'mvPosition = modelViewMatrix * mvPosition;';
-    if (shader.vertexShader.includes(marker)) {
-      shader.vertexShader = shader.vertexShader.replace(
-        marker,
-        '#ifdef USE_INSTANCING\n  mvPosition = instanceMatrix * mvPosition;\n#endif\n  ' + marker,
-      );
+    const patched = shader.vertexShader.replace(
+      marker,
+      '#ifdef USE_INSTANCING\n  mvPosition = instanceMatrix * mvPosition;\n#endif\n  ' + marker,
+    );
+    if (patched === shader.vertexShader) {
+      // Marker absent — ez-tree changed its GLSL. Every instance will render at origin.
+      console.warn('[treeFactory] patchInstancing: GLSL marker not found — instancing broken. Check ez-tree version.');
     }
+    shader.vertexShader = patched;
   };
   mat.needsUpdate = true;
   return mat;
@@ -120,19 +143,19 @@ export function buildTreeInstances(
 
     const branchInst = new THREE.InstancedMesh(proto.branchGeo, proto.branchMat, bpts.length);
     const leafInst = new THREE.InstancedMesh(proto.leafGeo, proto.leafMat, bpts.length);
-    branchInst.castShadow = true;
-    leafInst.castShadow = true;
-
-    // Leaf-shaped (not square) shadows: the depth pass must honor the leaf alpha
-    // map, so give the leaf instances a matching custom depth material.
-    const leafPhong = proto.leafMat as THREE.MeshPhongMaterial;
-    const leafDepth = new THREE.MeshDepthMaterial({
-      depthPacking: THREE.RGBADepthPacking,
-      alphaTest: leafPhong.alphaTest,
-      side: THREE.DoubleSide,
-    });
-    if (leafPhong.map) leafDepth.map = leafPhong.map;
-    leafInst.customDepthMaterial = leafDepth;
+    branchInst.castShadow = BRANCH_CAST_SHADOW;
+    leafInst.castShadow = LEAF_CAST_SHADOW;
+    if (LEAF_CAST_SHADOW) {
+      // Leaf-shaped (not square) shadows need the leaf alpha map in the depth pass.
+      const leafPhong = proto.leafMat as THREE.MeshPhongMaterial;
+      const leafDepth = new THREE.MeshDepthMaterial({
+        depthPacking: THREE.RGBADepthPacking,
+        alphaTest: leafPhong.alphaTest,
+        side: THREE.DoubleSide,
+      });
+      if (leafPhong.map) leafDepth.map = leafPhong.map;
+      leafInst.customDepthMaterial = leafDepth;
+    }
 
     bpts.forEach(([x, z], i) => {
       const sc = proto.normScale * (0.85 + rng() * 0.4);

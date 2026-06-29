@@ -6,7 +6,7 @@
  */
 
 import * as THREE from 'three';
-import { generateTreePrototypes, buildTreeInstances } from './treeFactory.js';
+import { getSharedTreePrototypes, buildTreeInstances } from './treeFactory.js';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -473,7 +473,7 @@ function buildPark(scene: THREE.Scene): void {
 
   // Shared ez-tree prototypes for the hand-authored grove + lawn trees,
   // matching the OSM trees. Generated at scene-build time (ez-tree needs a DOM).
-  const treeProtos = generateTreePrototypes(3, 13577);
+  const treeProtos = getSharedTreePrototypes();
 
   // 7 trees in shaded grove
   const groveCenters: [number, number][] = [

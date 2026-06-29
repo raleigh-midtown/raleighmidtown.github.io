@@ -84,11 +84,11 @@ describe('buildTreeInstances', () => {
     expect(varies).toBe(true);
   });
 
-  it('casts shadows and gives leaves a custom depth material', () => {
+  it('casts branch shadows but not leaf shadows (perf)', () => {
     const g = buildTreeInstances(protos(3), positions(20), 1);
-    expect(allInstanced(g).length).toBeGreaterThan(0);
-    expect(allInstanced(g).every((m) => m.castShadow)).toBe(true);
-    expect(leafMeshes(g).every((m) => m.customDepthMaterial instanceof THREE.MeshDepthMaterial)).toBe(true);
+    expect(branchMeshes(g).length).toBeGreaterThan(0);
+    expect(branchMeshes(g).every((m) => m.castShadow)).toBe(true);
+    expect(leafMeshes(g).every((m) => m.castShadow === false)).toBe(true);
   });
 
   it('normScale scales instance matrices', () => {

@@ -17,7 +17,7 @@ const TREE_ROAD_BUFFER = 4.0;   // road half-width + canopy radius (~2m) + small
 
 const SIDEWALK_WIDTH = 14;      // wide setback band — meets the road in most blocks
 const SIDEWALK_Y     = 0.05;    // sits between greenspace (0.04) and road (0.10)
-const TREE_SPACING   = 18;  // wide spacing — natural gaps, not a wall
+const TREE_SPACING   = 24;  // sparse street trees — accent, not a wall
 const TREE_INSET     = 2.0;     // tree placement from outer edge of sidewalk
 const MIN_PERIMETER  = 18;
 
@@ -177,10 +177,10 @@ export function buildStreetscape(geojson: FeatureCollection): THREE.Group {
           const tz = a[1] + uz * s + inz * TREE_INSET;
           if (isOnRoad(tx, tz, roadSegs)) continue;
           if (isInsideAnyBuilding(tx, tz, buildingBoxes)) continue;
-          // Position-hashed skip (~30%) so the row reads as a natural line with
+          // Position-hashed skip (~50%) so the row reads as a natural line with
           // gaps rather than an evenly-spaced wall of trees.
           const hash = (Math.imul((Math.round(tx) * 374761393) ^ (Math.round(tz) * 668265263), 1) >>> 0) % 100;
-          if (hash < 30) continue;
+          if (hash < 50) continue;
           treePositions.push([tx, tz]);
         }
       }
