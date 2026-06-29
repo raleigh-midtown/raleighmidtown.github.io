@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { FeatureCollection, Feature, Polygon } from 'geojson';
 import { projectLonLat } from './project.js';
+import { makeCanopyPrototypes } from './util/treeCanopy.js';
 
 function seededRng(seed: number) {
   let s = seed >>> 0;
@@ -91,63 +92,69 @@ export function buildTrees(geojson: FeatureCollection): THREE.Group {
   const pts = positions.slice(0, 350);
   if (pts.length === 0) return group;
 
-  // ── Deciduous tree geometry ───────────────────────────────────────────────
-  // Round spherical canopy matches the oak/maple street trees visible in the
-  // aerial photos — NOT conifer cones.
-  // Two sphere layers give a more organic, lumpy silhouette.
-  const canopyR   = 3.0;
-  const trunkH    = 3.8;
-  const canopyGeo = new THREE.SphereGeometry(canopyR, 9, 7);
-  const topGeo    = new THREE.SphereGeometry(canopyR * 0.62, 7, 5);  // smaller upper cluster
-  const trunkGeo  = new THREE.CylinderGeometry(0.22, 0.32, trunkH, 7);
+  // ── Procedural canopy (noise-displaced icosahedron, douges threejs-trees-1)─
+  // A few prototype canopy shapes are instanced across all trees; per-instance
+  // scale, rotation, and green tone supply variety while keeping draw calls low.
+  const PROTO_COUNT = 4;
+  const canopyR = 3.0;
+  const trunkH  = 3.8;
+  const prototypes = makeCanopyPrototypes(PROTO_COUNT, 24601, canopyR);
+  const trunkGeo   = new THREE.CylinderGeometry(0.22, 0.32, trunkH, 7);
 
-  const canopyMat = new THREE.MeshStandardMaterial({ color: 0x3d7a28, roughness: 0.9, flatShading: false });
-  const topMat    = new THREE.MeshStandardMaterial({ color: 0x2e6320, roughness: 0.9, flatShading: false });
+  // Canopy base colour is white so per-instance colours (set below) read true;
+  // flat shading makes the displaced facets pop.
+  const canopyMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, flatShading: true });
   const trunkMat  = new THREE.MeshStandardMaterial({ color: 0x5c3a1e, roughness: 0.95, flatShading: true });
-
-  const canopyInst = new THREE.InstancedMesh(canopyGeo, canopyMat, pts.length);
-  const topInst    = new THREE.InstancedMesh(topGeo,    topMat,    pts.length);
-  const trunkInst  = new THREE.InstancedMesh(trunkGeo,  trunkMat,  pts.length);
-  canopyInst.castShadow = true;
-  topInst.castShadow    = true;
-  trunkInst.castShadow  = true;
+  const greens    = [0x3d7a28, 0x2e6320, 0x4a8f33].map(c => new THREE.Color(c));
 
   const rng = seededRng(77777);
+
+  // Assign each tree to a prototype bucket so we can size one InstancedMesh per
+  // prototype geometry.
+  const buckets: [number, number][][] = Array.from({ length: PROTO_COUNT }, () => []);
+  pts.forEach((p) => { buckets[Math.floor(rng() * PROTO_COUNT) % PROTO_COUNT].push(p); });
+
+  const trunkInst = new THREE.InstancedMesh(trunkGeo, trunkMat, pts.length);
+  trunkInst.castShadow = true;
+
   const obj = new THREE.Object3D();
+  const col = new THREE.Color();
+  let trunkI = 0;
 
-  pts.forEach(([x, z], i) => {
-    const sc  = 0.7 + rng() * 0.65;           // scale variation: 0.7 – 1.35
-    const ry  = rng() * Math.PI * 2;
-    const jxc = (rng() - 0.5) * 0.8;          // slight horizontal wobble per instance
-    const jzc = (rng() - 0.5) * 0.8;
+  buckets.forEach((bucketPts, p) => {
+    if (bucketPts.length === 0) return;
+    const canopyInst = new THREE.InstancedMesh(prototypes[p], canopyMat, bucketPts.length);
+    canopyInst.castShadow = true;
 
-    // Trunk
-    obj.position.set(x, trunkH * 0.5 * sc, z);
-    obj.scale.set(sc, sc, sc);
-    obj.rotation.y = ry;
-    obj.updateMatrix();
-    trunkInst.setMatrixAt(i, obj.matrix);
+    bucketPts.forEach(([x, z], i) => {
+      const sc = 0.7 + rng() * 0.65;          // scale variation: 0.7 – 1.35
+      const ry = rng() * Math.PI * 2;
 
-    // Main canopy sphere — sits at trunk-top with slight overlap
-    const canopyY = (trunkH + canopyR * 0.55) * sc;
-    obj.position.set(x + jxc * sc, canopyY, z + jzc * sc);
-    obj.scale.set(sc, sc * 0.88, sc);         // slightly flattened — natural look
-    obj.rotation.y = ry;
-    obj.updateMatrix();
-    canopyInst.setMatrixAt(i, obj.matrix);
+      // Trunk
+      obj.position.set(x, trunkH * 0.5 * sc, z);
+      obj.scale.set(sc, sc, sc);
+      obj.rotation.set(0, ry, 0);
+      obj.updateMatrix();
+      trunkInst.setMatrixAt(trunkI++, obj.matrix);
 
-    // Smaller upper cluster — adds organic crown variation
-    const topY = canopyY + canopyR * 0.72 * sc;
-    obj.position.set(x - jxc * 0.5 * sc, topY, z - jzc * 0.5 * sc);
-    obj.scale.set(sc * 0.62, sc * 0.55, sc * 0.62);
-    obj.rotation.y = ry + 0.8;
-    obj.updateMatrix();
-    topInst.setMatrixAt(i, obj.matrix);
+      // Canopy — sits at trunk-top with slight overlap, lightly flattened
+      const canopyY = (trunkH + canopyR * 0.45) * sc;
+      obj.position.set(x, canopyY, z);
+      obj.scale.set(sc, sc * 0.9, sc);
+      obj.rotation.set(0, ry, 0);
+      obj.updateMatrix();
+      canopyInst.setMatrixAt(i, obj.matrix);
+
+      col.copy(greens[Math.floor(rng() * greens.length)]);
+      canopyInst.setColorAt(i, col);
+    });
+
+    canopyInst.instanceMatrix.needsUpdate = true;
+    if (canopyInst.instanceColor) canopyInst.instanceColor.needsUpdate = true;
+    group.add(canopyInst);
   });
 
-  canopyInst.instanceMatrix.needsUpdate = true;
-  topInst.instanceMatrix.needsUpdate    = true;
-  trunkInst.instanceMatrix.needsUpdate  = true;
-  group.add(canopyInst, topInst, trunkInst);
+  trunkInst.instanceMatrix.needsUpdate = true;
+  group.add(trunkInst);
   return group;
 }
