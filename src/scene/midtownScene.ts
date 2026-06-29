@@ -6,6 +6,7 @@
  */
 
 import * as THREE from 'three';
+import { getSharedTreePrototypes, buildTreeInstances } from './treeFactory.js';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -470,23 +471,16 @@ function buildPark(scene: THREE.Scene): void {
   grove.receiveShadow = true;
   scene.add(grove);
 
+  // Shared ez-tree prototypes for the hand-authored grove + lawn trees,
+  // matching the OSM trees. Generated at scene-build time (ez-tree needs a DOM).
+  const treeProtos = getSharedTreePrototypes();
+
   // 7 trees in shaded grove
-  const treeCanopyGeo = new THREE.SphereGeometry(2, 5, 4);
-  const treeTrunkGeo  = new THREE.CylinderGeometry(0.2, 0.2, 3, 6);
   const groveCenters: [number, number][] = [
     [-103, -187], [-98, -181], [-106, -179], [-96, -191],
     [-101, -175], [-108, -185], [-94, -183],
   ];
-  for (const [gx, gz] of groveCenters) {
-    const trunk = new THREE.Mesh(treeTrunkGeo, MAT_BRICK);
-    trunk.position.set(gx, 1.5, gz);
-    trunk.castShadow = true;
-    scene.add(trunk);
-    const canopy = new THREE.Mesh(treeCanopyGeo, MAT_GRASS_DARK);
-    canopy.position.set(gx, 4, gz);
-    canopy.castShadow = true;
-    scene.add(canopy);
-  }
+  scene.add(buildTreeInstances(treeProtos, groveCenters, 4444));
 
   // 4. Plaza promenade
   const plazaGeo = new THREE.PlaneGeometry(25, 12);
@@ -614,18 +608,10 @@ function buildPark(scene: THREE.Scene): void {
   const lawnTreeOffsets: [number, number][] = [
     [-15, -10], [15, -10], [-15, 10], [15, 10], [0, -12], [0, 12],
   ];
-  const ltCanopyGeo = new THREE.SphereGeometry(2, 5, 4);
-  const ltTrunkGeo  = new THREE.CylinderGeometry(0.2, 0.2, 3, 6);
-  for (const [ox, oz] of lawnTreeOffsets) {
-    const trunk = new THREE.Mesh(ltTrunkGeo, MAT_BRICK);
-    trunk.position.set(cx + ox, 1.5, cz + oz);
-    trunk.castShadow = true;
-    scene.add(trunk);
-    const canopy = new THREE.Mesh(ltCanopyGeo, MAT_GRASS_DARK);
-    canopy.position.set(cx + ox, 4, cz + oz);
-    canopy.castShadow = true;
-    scene.add(canopy);
-  }
+  const lawnTreePositions: [number, number][] = lawnTreeOffsets.map(
+    ([ox, oz]) => [cx + ox, cz + oz],
+  );
+  scene.add(buildTreeInstances(treeProtos, lawnTreePositions, 5555));
 }
 
 // ---------------------------------------------------------------------------
