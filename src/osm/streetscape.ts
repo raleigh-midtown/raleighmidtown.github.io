@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { FeatureCollection, Feature, LineString, MultiLineString } from 'geojson';
 import { projectLonLat } from './project.js';
+import { getSharedTreePrototypes, buildTreeInstances } from '../scene/treeFactory.js';
 import {
   type Pt,
   type BBox,
@@ -16,7 +17,7 @@ const TREE_ROAD_BUFFER = 4.0;   // road half-width + canopy radius (~2m) + small
 
 const SIDEWALK_WIDTH = 14;      // wide setback band — meets the road in most blocks
 const SIDEWALK_Y     = 0.05;    // sits between greenspace (0.04) and road (0.10)
-const TREE_SPACING   = 8;
+const TREE_SPACING   = 18;  // wide spacing — natural gaps, not a wall
 const TREE_INSET     = 2.0;     // tree placement from outer edge of sidewalk
 const MIN_PERIMETER  = 18;
 
@@ -176,6 +177,10 @@ export function buildStreetscape(geojson: FeatureCollection): THREE.Group {
           const tz = a[1] + uz * s + inz * TREE_INSET;
           if (isOnRoad(tx, tz, roadSegs)) continue;
           if (isInsideAnyBuilding(tx, tz, buildingBoxes)) continue;
+          // Position-hashed skip (~30%) so the row reads as a natural line with
+          // gaps rather than an evenly-spaced wall of trees.
+          const hash = (Math.imul((Math.round(tx) * 374761393) ^ (Math.round(tz) * 668265263), 1) >>> 0) % 100;
+          if (hash < 30) continue;
           treePositions.push([tx, tz]);
         }
       }
@@ -201,36 +206,10 @@ export function buildStreetscape(geojson: FeatureCollection): THREE.Group {
     group.add(mesh);
   }
 
-  // Street trees — InstancedMesh for trunk + canopy
+  // Street trees — instanced ez-tree prototypes (matches the OSM/scene trees)
   if (treePositions.length > 0) {
-    const trunkGeo = new THREE.CylinderGeometry(0.18, 0.26, 3.2, 8);
-    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5a3a22, roughness: 0.95 });
-    const canopyGeo = new THREE.SphereGeometry(2.0, 9, 7);
-    const canopyMat = new THREE.MeshStandardMaterial({ color: 0x4f7a3a, roughness: 0.85, flatShading: true });
-
-    const trunks = new THREE.InstancedMesh(trunkGeo, trunkMat, treePositions.length);
-    const canopies = new THREE.InstancedMesh(canopyGeo, canopyMat, treePositions.length);
-    trunks.castShadow = true;
-    canopies.castShadow = true;
-
-    const m = new THREE.Matrix4();
-    for (let i = 0; i < treePositions.length; i++) {
-      const [x, z] = treePositions[i];
-      // Tiny per-tree variation
-      const h = 3.0 + (((i * 13) % 7) / 7) * 0.8;
-      const cr = 1.7 + (((i * 7) % 11) / 11) * 0.7;
-
-      m.makeTranslation(x, h / 2, z);
-      trunks.setMatrixAt(i, m);
-
-      m.makeScale(cr / 2.0, cr / 2.0, cr / 2.0);
-      m.setPosition(x, h + cr * 0.45, z);
-      canopies.setMatrixAt(i, m);
-    }
-    trunks.instanceMatrix.needsUpdate = true;
-    canopies.instanceMatrix.needsUpdate = true;
-    group.add(trunks);
-    group.add(canopies);
+    const protos = getSharedTreePrototypes();
+    group.add(buildTreeInstances(protos, treePositions, 24680));
   }
 
   return group;

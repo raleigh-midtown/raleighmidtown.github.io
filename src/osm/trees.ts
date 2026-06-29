@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { FeatureCollection, Feature, Polygon } from 'geojson';
 import { projectLonLat } from './project.js';
-import { generateTreePrototypes, buildTreeInstances, type TreePrototype } from '../scene/treeFactory.js';
+import { getSharedTreePrototypes, buildTreeInstances, type TreePrototype } from '../scene/treeFactory.js';
 
 function seededRng(seed: number) {
   let s = seed >>> 0;
@@ -55,13 +55,14 @@ export function buildTrees(geojson: FeatureCollection, prototypes?: TreePrototyp
   //   Park Central:  x[188,324] z[236,327]  — south/west sides
   //
   // Safe zones (rows placed 3 m inside park boundary to stay on the lawn edge):
-  //   West edge (x=244): only z=231–269  (south of Chuy's z=230, north of Park Central z=236 is tight
-  //                                         so shift start to z=237)
-  //   East edge (x=343): z=227–269        (south of Midtown Green south boundary z=225 + 2m buffer)
-  //   North is all inside Midtown Green bounding box → skip
-  //   South is mostly inside Park Central  → skip
-  positions.push(...treeRow(244, 238, 244, 268, 8, 1.0, 101));  // west edge, south portion
-  positions.push(...treeRow(343, 227, 343, 268, 8, 1.0, 202));  // east edge
+  //   West edge (x=244): z=238–268 (south of Chuy's z=230 + buffer; north of Park Central z=236)
+  //   East edge (x=343): z=227–268
+  //   North row (z=227): x=241–346, south of Midtown Green (z≈225) + 2m buffer
+  //   South row (z=268): x=241–346, north of Park Central (z≈236) — stays inside lawn
+  positions.push(...treeRow(244, 238, 244, 268, 2, 1.0, 101));  // west edge (wider gap)
+  positions.push(...treeRow(343, 227, 343, 268, 2, 1.0, 202));  // east edge (wider gap)
+  positions.push(...treeRow(241, 227, 346, 227, 6, 1.0, 303));  // north long edge (length-wise)
+  positions.push(...treeRow(241, 268, 346, 268, 6, 1.0, 404));  // south long edge (length-wise)
 
   // ── The Commons park ──────────────────────────────────────────────────────
   // Actual park at x[-237,-217] z[178,198] — scatter trees inside it
@@ -97,7 +98,7 @@ export function buildTrees(geojson: FeatureCollection, prototypes?: TreePrototyp
 
   // ── Procedural ez-tree canopy ─────────────────────────────────────────────
   // Instance a few pre-generated ez-tree prototypes across the placed positions.
-  const protos = prototypes ?? generateTreePrototypes(5, 24601);
+  const protos = prototypes ?? getSharedTreePrototypes();
   group.add(buildTreeInstances(protos, pts, 77777));
   return group;
 }
