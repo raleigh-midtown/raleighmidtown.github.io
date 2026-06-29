@@ -6,6 +6,11 @@
  */
 
 import * as THREE from 'three';
+import { makeCanopyPrototypes } from '../osm/util/treeCanopy.js';
+
+// Shared procedural canopy prototypes for the hand-authored grove/lawn trees,
+// matching the OSM trees' faceted look. radius 2 to keep the old footprint.
+const SCENE_CANOPY_PROTOS = makeCanopyPrototypes(3, 13577, 2);
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -471,22 +476,21 @@ function buildPark(scene: THREE.Scene): void {
   scene.add(grove);
 
   // 7 trees in shaded grove
-  const treeCanopyGeo = new THREE.SphereGeometry(2, 5, 4);
   const treeTrunkGeo  = new THREE.CylinderGeometry(0.2, 0.2, 3, 6);
   const groveCenters: [number, number][] = [
     [-103, -187], [-98, -181], [-106, -179], [-96, -191],
     [-101, -175], [-108, -185], [-94, -183],
   ];
-  for (const [gx, gz] of groveCenters) {
+  groveCenters.forEach(([gx, gz], i) => {
     const trunk = new THREE.Mesh(treeTrunkGeo, MAT_BRICK);
     trunk.position.set(gx, 1.5, gz);
     trunk.castShadow = true;
     scene.add(trunk);
-    const canopy = new THREE.Mesh(treeCanopyGeo, MAT_GRASS_DARK);
+    const canopy = new THREE.Mesh(SCENE_CANOPY_PROTOS[i % SCENE_CANOPY_PROTOS.length], MAT_GRASS_DARK);
     canopy.position.set(gx, 4, gz);
     canopy.castShadow = true;
     scene.add(canopy);
-  }
+  });
 
   // 4. Plaza promenade
   const plazaGeo = new THREE.PlaneGeometry(25, 12);
@@ -614,18 +618,17 @@ function buildPark(scene: THREE.Scene): void {
   const lawnTreeOffsets: [number, number][] = [
     [-15, -10], [15, -10], [-15, 10], [15, 10], [0, -12], [0, 12],
   ];
-  const ltCanopyGeo = new THREE.SphereGeometry(2, 5, 4);
   const ltTrunkGeo  = new THREE.CylinderGeometry(0.2, 0.2, 3, 6);
-  for (const [ox, oz] of lawnTreeOffsets) {
+  lawnTreeOffsets.forEach(([ox, oz], i) => {
     const trunk = new THREE.Mesh(ltTrunkGeo, MAT_BRICK);
     trunk.position.set(cx + ox, 1.5, cz + oz);
     trunk.castShadow = true;
     scene.add(trunk);
-    const canopy = new THREE.Mesh(ltCanopyGeo, MAT_GRASS_DARK);
+    const canopy = new THREE.Mesh(SCENE_CANOPY_PROTOS[i % SCENE_CANOPY_PROTOS.length], MAT_GRASS_DARK);
     canopy.position.set(cx + ox, 4, cz + oz);
     canopy.castShadow = true;
     scene.add(canopy);
-  }
+  });
 }
 
 // ---------------------------------------------------------------------------
