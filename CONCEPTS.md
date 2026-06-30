@@ -19,6 +19,9 @@ Decorative outdoor seating deck east of the Chuy's restaurant building. Centered
 ### Park stage
 Performance pavilion at the east end of Midtown Park, positioned across the lawn from Chuy's patio. Built inside a `THREE.Group` so the whole pavilion can be re-oriented with a single `rotation.y`; currently rotated `-π/2` to face west.
 
+### Jubala storefront
+Hand-placed storefront prop for the Jubala Coffee tenant, mounted on Park Central's north wall so its glazed front faces the street and the open lawn to the north. Built inside a `THREE.Group` (like the Park stage) so the whole assembly — opaque body, floor-to-ceiling glass panes with mullions, gold name sign, red blade sign, and raised entry terrace — is positioned and rotated as a unit. Its `rotation.y` is derived from the Park Central wall edge's outward normal rather than hand-tuned; see the scene-object-placement-and-orientation pattern for the derivation procedure and the orientation invariants that guard against a wrong sign.
+
 ## Coordinate conventions
 
 ### Scene XZ frame

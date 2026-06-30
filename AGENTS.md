@@ -90,7 +90,7 @@ See [CONCEPTS.md](CONCEPTS.md) for full glossary including named scene entities 
 
 `docs/solutions/` — captured learnings from prior sessions, organized by category with YAML frontmatter (`module`, `tags`, `problem_type`). Relevant when implementing features, debugging issues, or making decisions in documented areas. Existing entries:
 
-- `architecture-patterns/scene-object-placement-and-orientation.md` — wrap composite props in `THREE.Group` for cheap re-orientation; cross-check hardcoded coords against OSM building footprints; verify spatial layout with top-down Playwright screenshots
+- `architecture-patterns/scene-object-placement-and-orientation.md` — wrap composite props in `THREE.Group` for cheap re-orientation; cross-check hardcoded coords against OSM building footprints; verify spatial layout with top-down Playwright screenshots; derive `rotation.y` from the wall outward normal (don't guess the sign); lock orientation with front-normal + width-axis invariant tests
 - `design-patterns/mixamo-bone-overlay-on-mixer-driven-animation.md` — five rules for layering hand-tuned bone poses (jump tuck, crouch, lean, etc.) over `AnimationMixer`-driven Mixamo locomotion
 
 ## Running
