@@ -12,9 +12,13 @@ import * as THREE from 'three';
  * of hand-rotating world offsets (the previous applyY() helper rotated by
  * -JROT, opposite to rotation.y, which left the glass panes non-coplanar).
  *
- * Wall reference: polygon edge (323.9,283.8)→(240.3,250.5) in scene space.
- * Under three.js rotation.y(+JROT), local -Z (the storefront front) faces
- * (-sin JROT, 0, -cos JROT) = (-0.371, 0, -0.929) — north toward the street.
+ * Wall reference: polygon edge (323.9,283.8)→(240.3,250.5) in scene space. That
+ * edge runs at +21.7° (atan2(z,x)); its OUTWARD normal (away from the Park
+ * Central bbox centroid, toward the street) is (0.370, 0, -0.929) = N 21.7° E.
+ * Under three.js rotation.y(JROT), local -Z (the storefront front) faces
+ * (-sin JROT, 0, -cos JROT); for that to equal the outward normal, JROT must
+ * be -0.379 rad. (A +0.379 sign mirrors it to N 21.7° W — NW — and skews the
+ * width 43.4° across the wall; that was the prior bug.)
  *
  * Coordinate conventions: +X east, +Z south, +Y up.
  */
@@ -25,20 +29,28 @@ const JZ   = 271.5;    // centre Z  (north wall at x=291 is z≈270.7)
 const JW   = 14;       // width  (m) along wall
 const JD   = 2;        // depth  (m) — thin facade slab
 const JH   = 5;        // height (m) above terrace
-const JROT = +0.379;   // wall angle — applied once to the group
+const JROT = -0.379;   // wall angle — applied once to the group (−: front faces N 21.7° E)
 
-// ── Entry terrace — aligned to Park Central block angle (JROT) ──────────────
-// Hand-tuned world centre (TERRACE_X/TERRACE_Z): back face flush with the
-// Park Central north wall (z≈271.3), front face at z≈265.7, clear of the park
-// fence (z≈263). Expressed in the group's local frame inside buildJubalaDecor
-// so the group rotation applies uniformly. Per CONCEPTS.md, Park Central's
-// bbox is x[188..324] z[236..327]; the storefront is intentionally mounted on
-// its north wall (JZ=271.5 is inside that z-range by design).
-const TERRACE_H = 1.8;    // raised platform height
-const TERRACE_D = 6.0;    // depth: back face at building wall, front at z≈265.7
-const TERRACE_W = 16;     // width along wall face (slightly wider than JW=14)
-const TERRACE_X = JX + Math.sin(JROT) * 1.0;   // ≈ 291.4 (world)
-const TERRACE_Z = 268.5;                         // centre z (world): back face at z≈271.3
+// ── Entry terrace — rotated with the group (parallel to the road/wall) ───────
+// The Park Central wall edge and the adjacent road ("Park At North Hills
+// Street") both run at ~21.7° (= JROT), so the storefront group is rotated JROT
+// to face the road. The terrace is a child of that group so it inherits JROT
+// and stays parallel to the road/wall/storefront — an axis-aligned (0°) terrace
+// would sit 21.7° skew to the road it borders. Width is along the wall (local
+// X), depth is perpendicular (local Z, -Z toward the street).
+//
+// Tuning: a rotated 16×6 m terrace projects its width onto world-Z, so the
+// local z centre is set to TERRACE_LOCAL_Z = -2.5 (back face at local +0.5,
+// front at local -5.5). That keeps the front-left (west) corner at world
+// z≈263.4 — just clear of the park fence (z≈263) — while the back-right
+// (east) corner (z≈274.9) stays no deeper into Park Central than the
+// storefront body already is. Per
+// CONCEPTS.md, Park Central's bbox is x[188..324] z[236..327]; the storefront
+// is mounted on its closest wall to the Jubala POI.
+const TERRACE_H = 1.8;        // raised platform height
+const TERRACE_W = 16;         // width along the wall/road (local X), slightly > JW=14
+const TERRACE_D = 6.0;        // depth perpendicular to the wall (local Z)
+const TERRACE_LOCAL_Z = -2.5; // local z centre: front at -5.5 (toward road), back at +0.5 (wall)
 
 // ── Canvas texture helpers ──────────────────────────────────────────────────
 
@@ -86,17 +98,16 @@ export function buildJubalaDecor(scene: THREE.Scene): THREE.Mesh[] {
   group.rotation.y = JROT;
   scene.add(group);
 
-  // ── Entry terrace ──────────────────────────────────────────────────────────
+  // ── Entry terrace — child of the rotated group, parallel to the road ───────
+  // Inherits the group's JROT rotation so it runs parallel to the Park Central
+  // wall and the adjacent road (both ~21.7°), matching the storefront. Local z
+  // centre TERRACE_LOCAL_Z = -2.5 tunes the offset so the front-left (west)
+  // corner clears the park fence (z≈263); see the TERRACE constants comment.
   const terrace = new THREE.Mesh(
     new THREE.BoxGeometry(TERRACE_W, TERRACE_H, TERRACE_D),
     new THREE.MeshStandardMaterial({ color: 0xB8B4AE, flatShading: true }),
   );
-  // Terrace was hand-tuned in world coords (TERRACE_X/TERRACE_Z); express that
-  // world delta from the group origin in the group's local frame so its world
-  // position is preserved under the group rotation.
-  const terraceLocal = new THREE.Vector3(TERRACE_X - JX, TERRACE_H / 2, TERRACE_Z - JZ)
-    .applyAxisAngle(new THREE.Vector3(0, 1, 0), -JROT);
-  terrace.position.copy(terraceLocal);
+  terrace.position.set(0, TERRACE_H / 2, TERRACE_LOCAL_Z);
   terrace.receiveShadow = true;
   group.add(terrace);
 

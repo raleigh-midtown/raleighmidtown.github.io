@@ -17,9 +17,17 @@ import { buildJubalaDecor } from '../jubalaDecor';
  *     of depth (some embedded inside the body) instead of a flat wall.
  *
  * Constants mirror src/osm/jubalaDecor.ts: JX=291, JZ=271.5, JW=14, JD=2,
- * JH=5, JROT=0.379, TERRACE_H=1.8, glassFaceZ = JD/2 + 0.08 = 1.08.
+ * JH=5, JROT=-0.379, TERRACE_H=1.8, glassFaceZ = JD/2 + 0.08 = 1.08.
+ *
+ * JROT sign: the Park Central wall edge (323.9,283.8)->(240.3,250.5) runs at
+ * +21.7deg (atan2(z,x)); its OUTWARD normal (toward the street, away from the
+ * Park Central bbox centroid) is (0.370, -0.929) = N 21.7deg E. three.js
+ * rotation.y(θ) sends local -Z to (-sin θ, -cos θ); for that to equal the
+ * outward normal, θ must be -0.379 rad. A +0.379 sign mirrors the storefront
+ * so its front faces N 21.7deg W (NW) and its width runs 43.4deg across the
+ * wall instead of along it.
  */
-const JROT = 0.379;
+const JROT = -0.379;
 const JD = 2;
 const GLASS_FACE_Z = JD / 2 + 0.08; // 1.08 — panes sit this far (local) in front of body centre
 
@@ -155,6 +163,109 @@ describe('buildJubalaDecor — glass wall coplanarity (R2/R6, the applyY bug)', 
     expect(mat.opacity).toBeGreaterThanOrEqual(0.25);
     expect(mat.opacity).toBeLessThanOrEqual(0.5);
     expect(mat.side).toBe(THREE.DoubleSide);
+  });
+});
+
+describe('buildJubalaDecor — entry terrace aligned to the road (JROT)', () => {
+  // The Park Central wall and the adjacent road ("Park At North Hills Street")
+  // both run at ~21.7°, so the storefront group is rotated JROT=-0.379 to make
+  // local -Z face the wall's outward normal (N 21.7° E, toward the road). The
+  // terrace must share that rotation so the whole assembly is parallel to the
+  // road/wall — an axis-aligned (0°) terrace would be 21.7° off from the road it
+  // sits beside. The terrace is tuned (width 16, depth 6, local z centre -2.5)
+  // so its rotated front-left (west) corner still clears the park fence (z≈263).
+  // These tests lock the road-alignment + fence-clearance invariants.
+  const JROT_LOCAL = -0.379;
+
+  /** World-space z-extent of a mesh's geometry, via localToWorld on each vertex. */
+  function worldZExtent(mesh: THREE.Mesh): { min: number; max: number; span: number } {
+    const geo = mesh.geometry as THREE.BufferGeometry;
+    const pos = geo.attributes.position;
+    const v = new THREE.Vector3();
+    let min = Infinity, max = -Infinity;
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i);
+      mesh.localToWorld(v);
+      min = Math.min(min, v.z);
+      max = Math.max(max, v.z);
+    }
+    return { min, max, span: max - min };
+  }
+
+  /** World yaw of a mesh, normalized to (-π, π]. */
+  function worldYaw(mesh: THREE.Mesh): number {
+    const q = mesh.getWorldQuaternion(new THREE.Quaternion());
+    const yaw = new THREE.Euler().setFromQuaternion(q, 'YXZ').y;
+    return ((yaw + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI;
+  }
+
+  it('terrace world yaw ≈ JROT (rotated to the road/wall, not axis-aligned)', () => {
+    const { scene, meshes } = build();
+    scene.updateWorldMatrix(true, true);
+    expect(Math.abs(worldYaw(meshes[1]) - JROT_LOCAL)).toBeLessThan(0.01);
+  });
+
+  it('terrace is parallel to the storefront body (same world yaw)', () => {
+    const { scene, meshes } = build();
+    scene.updateWorldMatrix(true, true);
+    const body = meshes[0];
+    const terrace = meshes[1];
+    expect(Math.abs(worldYaw(terrace) - worldYaw(body))).toBeLessThan(0.01);
+  });
+
+  it('terrace stays clear of the park fence (world min z ≥ 263)', () => {
+    const { scene, meshes } = build();
+    scene.updateWorldMatrix(true, true);
+    const { min } = worldZExtent(meshes[1]);
+    // A rotated 16×6 terrace tuned to local z centre -2.5 keeps its front-left
+    // (west) corner at z≈263.4 — just clear of the z≈263 fence.
+    expect(min).toBeGreaterThanOrEqual(263);
+  });
+});
+
+describe('buildJubalaDecor — storefront faces the street, not NW (JROT sign)', () => {
+  // Regression guard for the JROT sign error. The Park Central wall edge
+  // (323.9,283.8)->(240.3,250.5) has outward normal (0.370, -0.929) = N 21.7° E
+  // (toward the street, away from the Park Central bbox centroid). The
+  // storefront's local -Z front must point along that outward normal, and its
+  // local +X width axis must run parallel to the wall (+21.7° in atan2(z,x)).
+  // A +0.379 sign flips both: front -> N 21.7° W (NW) and width 43.4° across
+  // the wall.
+  const WALL_BEARING_DEG = 21.7;        // outward-normal bearing from N (+=E)
+  const WALL_ALONG_DEG = 21.7;          // wall along-edge angle, atan2(z,x)
+
+  /** Bearing (deg, from N, +=E) of a world-direction (x,z). */
+  function bearingFromNorth(x: number, z: number): number {
+    return (Math.atan2(x, -z) * 180) / Math.PI;
+  }
+
+  it('storefront front (local -Z) faces the wall outward normal, not NW', () => {
+    const { scene, meshes } = build();
+    scene.updateWorldMatrix(true, true);
+    const body = meshes[0];
+    const front = new THREE.Vector3(0, 0, -1).applyQuaternion(
+      body.getWorldQuaternion(new THREE.Quaternion()),
+    );
+    const bearing = bearingFromNorth(front.x, front.z);
+    // N 21.7° E (toward the street). NOT N 21.7° W (the +0.379 mirror bug).
+    expect(bearing).toBeCloseTo(WALL_BEARING_DEG, 0);
+    expect(bearing).toBeGreaterThan(0); // east of north, not west
+  });
+
+  it('storefront width axis (local +X) runs parallel to the wall', () => {
+    const { scene, meshes } = build();
+    scene.updateWorldMatrix(true, true);
+    const body = meshes[0];
+    const widthAxis = new THREE.Vector3(1, 0, 0).applyQuaternion(
+      body.getWorldQuaternion(new THREE.Quaternion()),
+    );
+    // atan2(z,x) of the world width axis should match the wall's +21.7° line.
+    const angleDeg = (Math.atan2(widthAxis.z, widthAxis.x) * 180) / Math.PI;
+    // Normalize the undirected wall line: +21.7° and -158.3° are the same line.
+    const normalized = ((angleDeg % 180) + 180) % 180; // fold to [0,180)
+    const wallNorm = ((WALL_ALONG_DEG % 180) + 180) % 180;
+    const diff = Math.min(Math.abs(normalized - wallNorm), 180 - Math.abs(normalized - wallNorm));
+    expect(diff).toBeLessThan(1.0);
   });
 });
 
