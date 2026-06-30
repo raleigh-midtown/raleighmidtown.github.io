@@ -17,6 +17,7 @@ import { GyroscopeControls } from './controls/gyroscope';
 import { buildTrees } from './osm/trees';
 import { buildShopSigns } from './osm/shopSigns';
 import { buildChuysDecor } from './osm/chuysDecor';
+import { buildJubalaDecor } from './osm/jubalaDecor';
 import { buildFences } from './osm/fences';
 import { buildStreetscape } from './osm/streetscape';
 import { buildParkStage } from './osm/parkStage';
@@ -113,6 +114,9 @@ async function init(): Promise<void> {
   // Chuy's outdoor patio — orange barrel-arch canopy at NW corner of Midtown Park
   buildChuysDecor(scene);
 
+  // Jubala Coffee storefront — gold name sign, glass wall, blade sign
+  const jubalaBodyMeshes = buildJubalaDecor(scene);
+
   // Midtown Park stage + perimeter benches + street-side benches near P&M and The Eastern
   buildParkStage(scene, mapData);
   scene.add(buildBenches(mapData));
@@ -129,11 +133,11 @@ async function init(): Promise<void> {
   });
   scene.add(labelGroup);
 
-  // Build BVH collision from all building meshes
+  // Build BVH collision from all building meshes + hand-placed collidable props
   if (buildingMeshes.length > 0) {
     // Buildings are added to scene, so world matrices are available after scene.add
     buildingGroup.updateWorldMatrix(true, true);
-    collision.build(...buildingMeshes);
+    collision.build(...buildingMeshes, ...jubalaBodyMeshes);
     cameraRig.setRaycastFn((from, to) => collision.raycastTo(from, to));
   }
 
