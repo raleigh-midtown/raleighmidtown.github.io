@@ -85,4 +85,33 @@ describe('CollisionSystem', () => {
     system.build(ceiling);
     expect(system.raycastUp(new THREE.Vector3(0, 0, 0), 20)).toBeCloseTo(9.5, 1);
   });
+
+  it('build() merges mixed-attribute geometries (buildingType + plain) into a working BVH', () => {
+    // Building meshes carry a buildingType Int32Array (extrude.ts) that hand-placed
+    // props lack. Without stripping it, mergeGeometries(useGroups=false) returns
+    // null and the BVH is never built — raycastDown would fall back to the ground
+    // plane (distance 20), not the roof (distance 14).
+    const system = new CollisionSystem();
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(10, 1, 10));
+    roof.position.set(0, 5.5, 0);
+    roof.updateMatrixWorld(true);
+    const arr = new Int32Array(roof.geometry.attributes.position.count).fill(1);
+    roof.geometry.setAttribute('buildingType', new THREE.BufferAttribute(arr, 1));
+    const prop = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2)); // plain, no buildingType
+    prop.position.set(50, 1, 50); // far from the raycast so it does not shadow the roof
+    prop.updateMatrixWorld(true);
+    system.build(roof, prop);
+    expect(system.raycastDown(new THREE.Vector3(0, 20, 0), 50)).toBeCloseTo(14, 1);
+  });
+
+  it('build() with a single buildingType-tagged geometry still works (regression)', () => {
+    const system = new CollisionSystem();
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(10, 1, 10));
+    roof.position.set(0, 5.5, 0);
+    roof.updateMatrixWorld(true);
+    const arr = new Int32Array(roof.geometry.attributes.position.count).fill(1);
+    roof.geometry.setAttribute('buildingType', new THREE.BufferAttribute(arr, 1));
+    system.build(roof);
+    expect(system.raycastDown(new THREE.Vector3(0, 20, 0), 50)).toBeCloseTo(14, 1);
+  });
 });

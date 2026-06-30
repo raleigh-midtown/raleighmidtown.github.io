@@ -21,6 +21,15 @@ export class CollisionSystem {
     const geos = meshes.map(m => {
       const geo = (m.geometry as THREE.BufferGeometry).clone();
       geo.applyMatrix4(m.matrixWorld);
+      // mergeGeometries(useGroups=false) requires identical attribute sets across
+      // every input. Building meshes carry a `buildingType` Int32Array (extrude.ts)
+      // that hand-placed props (Jubala body, terrace, grill) lack; the mismatch
+      // returns null and the BVH is never built. Strip anything collision does not
+      // need so all inputs share {position, normal, uv}.
+      const keep = new Set(['position', 'normal', 'uv']);
+      for (const name of Object.keys(geo.attributes)) {
+        if (!keep.has(name)) geo.deleteAttribute(name);
+      }
       return geo;
     });
     const merged = geos.length === 1 ? geos[0] : mergeGeometries(geos, false);
