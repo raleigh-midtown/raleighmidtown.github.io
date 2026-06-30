@@ -114,5 +114,33 @@ export function buildParkCentralTerrace(scene: THREE.Scene): THREE.Mesh[] {
   terrace.receiveShadow = true;
   group.add(terrace);
 
-  return [terrace];
+  // ── Metal grill — child of the terrace group, on the deck near the road edge
+  // A small barrel-style grill standing on the deck, near the road-side (north)
+  // edge. Inherits JROT from the group so it stays oriented to the wall. Local
+  // X is along-wall (mid-terrace, east of the ramp), local Z is toward the road
+  // (-Z); the grill sits just inboard of the road-side front edge.
+  const grillX = 30;        // along-wall, mid-terrace flat region (ramp ends at X=12)
+  const grillZ = -3.5;     // near the road-side edge (deck spans Z ∈ [-4.7, +1.3])
+  const grillMat = new THREE.MeshStandardMaterial({
+    color: 0x2A2A2E,
+    metalness: 0.85,
+    roughness: 0.35,
+  });
+  const barrel = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.35, 0.35, 0.9, 16),
+    grillMat,
+  );
+  barrel.position.set(grillX, TERRACE_H + 0.45, grillZ);
+  barrel.castShadow = true;
+  group.add(barrel);
+
+  const grate = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.42, 0.42, 0.06, 16),
+    grillMat,
+  );
+  grate.position.set(grillX, TERRACE_H + 0.93, grillZ);
+  grate.castShadow = true;
+  group.add(grate);
+
+  return [terrace, barrel, grate];
 }

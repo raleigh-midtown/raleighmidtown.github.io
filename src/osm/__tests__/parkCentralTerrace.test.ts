@@ -201,3 +201,92 @@ describe('buildParkCentralTerrace — collision registration', () => {
     expect(meshes[0].geometry instanceof THREE.ExtrudeGeometry).toBe(true);
   });
 });
+
+describe('buildParkCentralTerrace — metal grill (U3, R7-R10)', () => {
+  function isGrillMesh(o: THREE.Object3D): o is THREE.Mesh {
+    if (!(o instanceof THREE.Mesh)) return false;
+    if (!(o.geometry instanceof THREE.CylinderGeometry)) return false;
+    const mat = o.material as THREE.MeshStandardMaterial;
+    return mat instanceof THREE.MeshStandardMaterial && mat.metalness >= 0.6;
+  }
+
+  it('a grill mesh is present as a descendant of the terrace group', () => {
+    const { scene } = build();
+    const grills: THREE.Mesh[] = [];
+    scene.traverse((o) => { if (isGrillMesh(o)) grills.push(o); });
+    expect(grills.length).toBeGreaterThanOrEqual(1);
+    for (const g of grills) {
+      // descendant of the terrace group (not a direct scene child)
+      let p: THREE.Object3D | null = g.parent;
+      let inGroup = false;
+      while (p) { if (p instanceof THREE.Group && p.parent === scene) { inGroup = true; break; } p = p.parent; }
+      expect(inGroup).toBe(true);
+    }
+  });
+
+  it('the grill shares the terrace group orientation (same world yaw)', () => {
+    const { scene, meshes } = build();
+    scene.updateWorldMatrix(true, true);
+    const group = meshes[0].parent as THREE.Group;
+    const groupYaw = new THREE.Euler().setFromQuaternion(
+      group.getWorldQuaternion(new THREE.Quaternion()), 'YXZ',
+    ).y;
+    const grills: THREE.Mesh[] = [];
+    scene.traverse((o) => { if (isGrillMesh(o)) grills.push(o); });
+    expect(grills.length).toBeGreaterThan(0);
+    for (const g of grills) {
+      const yaw = new THREE.Euler().setFromQuaternion(
+        g.getWorldQuaternion(new THREE.Quaternion()), 'YXZ',
+      ).y;
+      // CylinderGeometry is rotationally symmetric about Y, so compare the
+      // group's rotation channel the grill inherits (parent group yaw).
+      expect(Math.abs(yaw - groupYaw) % (2 * Math.PI)).toBeLessThan(0.01);
+    }
+  });
+
+  it('grill material is metal (metalness ≥ 0.6) and dark grey', () => {
+    const { scene } = build();
+    const grills: THREE.Mesh[] = [];
+    scene.traverse((o) => { if (isGrillMesh(o)) grills.push(o); });
+    expect(grills.length).toBeGreaterThan(0);
+    const mat = grills[0].material as THREE.MeshStandardMaterial;
+    expect(mat.metalness).toBeGreaterThanOrEqual(0.6);
+    const c = mat.color;
+    // dark grey: all channels low and roughly equal
+    expect(c.r).toBeLessThan(0.35);
+    expect(c.g).toBeLessThan(0.35);
+    expect(c.b).toBeLessThan(0.35);
+  });
+
+  it('grill base sits on the deck (world y ≈ TERRACE_H) near the road-side edge', () => {
+    const { scene } = build();
+    scene.updateWorldMatrix(true, true);
+    const grills: THREE.Mesh[] = [];
+    scene.traverse((o) => { if (isGrillMesh(o)) grills.push(o); });
+    expect(grills.length).toBeGreaterThan(0);
+    const terrace = scene.getObjectByProperty('type', 'Mesh') as THREE.Mesh | undefined;
+    // Convert the grill's world position into the terrace mesh's local frame to
+    // check it is on the deck (y ≈ TERRACE_H) and in the road-side (−Z) half.
+    const barrel = grills
+      .map((g) => ({ g, r: (g.geometry as THREE.CylinderGeometry).parameters.radiusTop }))
+      .sort((a, b) => a.r - b.r)[0].g; // the narrower barrel, not the grate
+    const local = barrel.worldToLocal(new THREE.Vector3()); // origin in local frame
+    // Grill is a child of the group, so its local origin is already in the
+    // terrace-group frame (position set via group.add). Use barrel.position
+    // (local-to-group) directly: y base = position.y - halfHeight.
+    const geo = barrel.geometry as THREE.CylinderGeometry;
+    const baseY = barrel.position.y - geo.parameters.height / 2;
+    expect(baseY).toBeCloseTo(1.8, 1); // on the deck top
+    expect(barrel.position.z).toBeLessThan(-1.0); // road-side (-Z) half of the deck
+    expect(barrel.castShadow).toBe(true);
+  });
+
+  it('the grill meshes are in the returned collision array', () => {
+    const { meshes, scene } = build();
+    const returned = new Set(meshes.map((m) => m));
+    const grills: THREE.Mesh[] = [];
+    scene.traverse((o) => { if (isGrillMesh(o)) grills.push(o); });
+    expect(grills.length).toBeGreaterThan(0);
+    for (const g of grills) expect(returned.has(g)).toBe(true);
+  });
+});
