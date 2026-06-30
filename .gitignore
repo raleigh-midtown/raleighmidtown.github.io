@@ -3,3 +3,4 @@ node_modules/
 docs/
 STRATEGY.md
 .claude
+public/data/midtown.geojson
