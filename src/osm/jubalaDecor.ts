@@ -11,8 +11,8 @@ import * as THREE from 'three';
  */
 
 // ── Storefront constants ────────────────────────────────────────────────────
-const JX   = 8;      // centre X
-const JZ   = -148;   // centre Z
+const JX   = 291;    // centre X  (projected from OSM node -78.6368506, 35.8359373)
+const JZ   = 270;    // centre Z  (approx north face of Park Central North Hills building)
 const JW   = 14;     // width  (m)
 const JD   = 8;      // depth  (m)
 const JH   = 5;      // height (m)
@@ -79,10 +79,9 @@ function makeBladeTexture(): THREE.CanvasTexture {
 export function buildJubalaDecor(scene: THREE.Scene): THREE.Mesh[] {
   const ry = JROT;
 
-  // Front-face direction unit vector (local +Z rotated by ry).
-  // +Z is south — the direction players approach from; placing planes here
-  // puts them on the south face of the body, visible to the player.
-  const frontDir = applyY(new THREE.Vector3(0, 0, 1), ry);
+  // Front-face direction unit vector: local -Z (north), rotated by ry.
+  // Players approach from the north (z=245 < building z=270), so -Z faces them.
+  const frontDir = applyY(new THREE.Vector3(0, 0, -1), ry);
 
   // ── Body ───────────────────────────────────────────────────────────────────
   const body = new THREE.Mesh(
@@ -96,8 +95,8 @@ export function buildJubalaDecor(scene: THREE.Scene): THREE.Mesh[] {
   scene.add(body);
 
   // ── Glass wall — floor-to-ceiling, full width ──────────────────────────────
-  // Offset 0.08 m off the south (street-facing) face to prevent z-fighting.
-  // rotation.y = ry so the plane's default +Z normal faces south toward the player.
+  // Offset 0.08 m off the north face to prevent z-fighting.
+  // rotation.y = ry + Math.PI flips the plane's normal to face north toward the player.
   const glassH = 3.5;
   const glassMat = new THREE.MeshStandardMaterial({
     color: 0x7FAFC9,
@@ -114,7 +113,7 @@ export function buildJubalaDecor(scene: THREE.Scene): THREE.Mesh[] {
     glassH / 2,
     JZ + glassOffset.z,
   );
-  glass.rotation.y = ry;
+  glass.rotation.y = ry + Math.PI;
   scene.add(glass);
 
   // ── Gold name sign ─────────────────────────────────────────────────────────
@@ -132,7 +131,7 @@ export function buildJubalaDecor(scene: THREE.Scene): THREE.Mesh[] {
     4.1,
     JZ + signOffset.z,
   );
-  sign.rotation.y = ry;
+  sign.rotation.y = ry + Math.PI;
   scene.add(sign);
 
   // ── Blade sign — perpendicular to left facade edge ─────────────────────────
@@ -148,7 +147,7 @@ export function buildJubalaDecor(scene: THREE.Scene): THREE.Mesh[] {
   });
   const blade = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 3.0), bladeMat);
   // Place at left facade edge, forward of the wall by 0.2 m
-  const bladeLocalOffset = new THREE.Vector3(-(JW / 2 - 0.5), 0, JD / 2 + 0.2);
+  const bladeLocalOffset = new THREE.Vector3(-(JW / 2 - 0.5), 0, -(JD / 2 + 0.2));
   const bladeWorldOffset = applyY(bladeLocalOffset, ry);
   blade.position.set(
     JX + bladeWorldOffset.x,
