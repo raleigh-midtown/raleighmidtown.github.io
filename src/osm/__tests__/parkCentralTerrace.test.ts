@@ -11,14 +11,14 @@ import { buildParkCentralTerrace } from '../parkCentralTerrace';
  *
  *   Wall edge: B=(204.9,236.4) west → A=(323.9,283.8) NE corner.
  *   Along-wall bearing ≈ 21.7° east-of-north; outward normal (toward the
- *   road "Park At North Hills Street", ~10 m north) ≈ (0.370,−0.929) = N 21.7° E.
+ *   road "Park At North Hills Street", ~32 m north) ≈ (0.370,−0.929) = N 21.7° E.
  *
  * Clearance (R2 deviation, approved 2026-06-30): the plan's literal "world min
  * z ≥ 263" was a proxy for "don't cross the park". The geojson has no fence at
- * z≈263; the real northern limits are the road (~10 m north of the wall) and
- * the park polygon (~15 m north). The deck extends only ~4.7 m north of the
- * wall, so we assert the deck stays within ~6 m of the wall (clear of the road)
- * instead of the z≥263 proxy.
+ * z≈263; the real northern limit is the park polygon (~14 m north of the wall,
+ * ~parallel, verified for the FULL wall length). The deck extends only ~4.7 m
+ * north of the wall, so we assert the deck stays within ~6 m of the wall (clear
+ * of the ~14 m park boundary) instead of the z≥263 proxy.
  *
  * Jubala storefront reference placement (from jubalaDecor.ts): centre
  * (291, 271.5), width 14, sits on the flat part of this terrace.
@@ -96,7 +96,7 @@ describe('buildParkCentralTerrace — orientation vs the reference wall', () => 
 });
 
 describe('buildParkCentralTerrace — clearance (R2 deviation: real road/park limits)', () => {
-  it('deck stays within ~6 m of the wall (clear of the ~10 m road, not the z=263 proxy)', () => {
+  it('deck stays within ~6 m of the wall (clear of the ~14 m park boundary, not the z=263 proxy)', () => {
     const { meshes } = build();
     const terrace = meshes[0];
     const pos = terrace.geometry.attributes.position;
@@ -108,7 +108,7 @@ describe('buildParkCentralTerrace — clearance (R2 deviation: real road/park li
       const d = outwardDistance(v.x, v.z);
       if (d > maxOut) maxOut = d;
     }
-    // Deck extends ~4.7 m north of the wall; road is ~10 m north → ≥4 m clearance.
+    // Deck extends ~4.7 m north of the wall; park boundary is ~14 m north → ≥9 m clearance.
     expect(maxOut).toBeLessThanOrEqual(6.0);
     expect(maxOut).toBeGreaterThan(3.0); // sanity: the deck actually reaches toward the road
   });
@@ -127,7 +127,7 @@ describe('buildParkCentralTerrace — ramped west end, flat deck, sheer east', (
     return out;
   }
 
-  it('west end tapers to ground (top surface at y≈0 at the trim)', () => {
+  it('west end tapers to ground (top surface at y≈0 at the wall west end, point B)', () => {
     const { meshes } = build();
     const verts = profileVertices(meshes[0]);
     const atWest = verts.filter((p) => p.x < 0.01);
@@ -175,6 +175,23 @@ describe('buildParkCentralTerrace — ramped west end, flat deck, sheer east', (
     expect(maxY).toBeCloseTo(1.8, 1); // deck-top height, not a ramp-down
   });
 
+  it('spans the FULL north wall: ramp foot at the west end (point B), not trimmed short', () => {
+    // The bug this guards against: an earlier version trimmed the terrace at
+    // along-wall s=72, so the ramp foot sat at world (271.79, 263.04) instead of
+    // the wall's west end B. The ramp foot (local x≈0, y≈0) must map to B.
+    const { meshes } = build();
+    const terrace = meshes[0];
+    const group = terrace.parent as THREE.Group;
+    // Group origin must be the wall's west end (point B), not s=72 along it.
+    const gp = group.getWorldPosition(new THREE.Vector3());
+    expect(gp.x).toBeCloseTo(WALL_WEST.x, 1);
+    expect(gp.z).toBeCloseTo(WALL_WEST.z, 1);
+    // And the terrace length must equal the full wall length, not a trimmed span.
+    const verts = profileVertices(terrace);
+    const maxX = Math.max(...verts.map((p) => p.x));
+    expect(maxX).toBeCloseTo(WALL_LEN, 0); // ≈ 128.1, not 56.1
+  });
+
   it('terrace top at the Jubala location (world x≈291) is flat at y≈1.8', () => {
     const { meshes } = build();
     const terrace = meshes[0];
@@ -182,7 +199,7 @@ describe('buildParkCentralTerrace — ramped west end, flat deck, sheer east', (
     const jubalaLocal = terrace.worldToLocal(new THREE.Vector3(291, 0, 271.5));
     // On the flat deck (past the ramp, before the NE corner): local x ∈ [12, L].
     expect(jubalaLocal.x).toBeGreaterThan(12);
-    expect(jubalaLocal.x).toBeLessThan(60);
+    expect(jubalaLocal.x).toBeLessThan(128.1);
     // The flat deck top spans [ramp-crest, east-end] at y≈1.8; Jubala must fall
     // within that span so its body base (y=TERRACE_H) sits on the deck.
     const verts = profileVertices(terrace);
