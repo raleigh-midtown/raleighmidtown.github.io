@@ -4,3 +4,5 @@ docs/
 STRATEGY.md
 .claude
 public/data/midtown.geojson
+reference/midtown-reference/images/*.html
+reference/midtown-reference/images/*_files/
