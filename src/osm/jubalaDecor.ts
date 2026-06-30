@@ -26,13 +26,15 @@ const JH   = 5;        // height (m)
 const JROT = +0.379;
 
 // ── Park Central north-wall terrace constants ───────────────────────────────
-// Wall edge (323.9,283.8)→(240.3,250.5), length ≈90 m, midpoint (282.1,267.15).
-// Terrace spans the full wall width and covers the ground strip between the
-// fence/sidewalk and the building base (~6 m outward from the wall).
-const WALL_MID_X  = 282.1;
-const WALL_MID_Z  = 267.15;
-const TERRACE_W   = 90;    // full wall length (m)
-const TERRACE_D   = 5;     // depth outward from wall (m)
+// Axis-aligned (east-west, rotation.y=0) so the slab stays at constant z
+// across its full width. The wall's NW end is at (240, 250) — only 5m from
+// the park; a diagonal slab at JROT would extend into the park at the west end.
+// Width 84m covers the wall's x-span (x=240→324). Center z=266 places the
+// slab in the grey zone between the fence (~z=263) and the building base (~z=271).
+const TERRACE_X   = 282;   // centre x (midpoint of wall x-span 240→324)
+const TERRACE_Z   = 266;   // centre z (east-west strip at building base)
+const TERRACE_W   = 84;    // east-west width matching wall x-span (m)
+const TERRACE_D   = 6;     // z-depth (fence to building base)
 const TERRACE_H   = 1.0;   // slab height — must clear the fence railing (~0.9 m)
 
 // ── Helper: rotate offset vector around Y ──────────────────────────────────
@@ -150,20 +152,16 @@ export function buildJubalaDecor(scene: THREE.Scene): THREE.Mesh[] {
   scene.add(blade);
 
   // ── Full-wall entry terrace ────────────────────────────────────────────────
-  // Spans the entire Park Central north wall (~90 m) and covers the ground
-  // strip between the building base and the sidewalk/fence (~6 m deep).
-  // Box center = wall midpoint + frontDir * (TERRACE_D / 2) so the back face
-  // sits flush against the building wall and the front face meets the sidewalk.
+  // East-west axis-aligned slab (rotation.y=0) covering the grey ground strip
+  // at the Park Central north facade. No JROT angle — a diagonal slab's west
+  // end would reach z≈248 (inside the park). Fixed x/z centres keep every
+  // point of the slab at z=263–269, well clear of the park.
   const terrace = new THREE.Mesh(
     new THREE.BoxGeometry(TERRACE_W, TERRACE_H, TERRACE_D),
     new THREE.MeshStandardMaterial({ color: 0xB4B0AA, flatShading: true }),
   );
-  terrace.position.set(
-    WALL_MID_X + frontDir.x * (TERRACE_D / 2),
-    TERRACE_H / 2,
-    WALL_MID_Z + frontDir.z * (TERRACE_D / 2),
-  );
-  terrace.rotation.y = ry;
+  terrace.position.set(TERRACE_X, TERRACE_H / 2, TERRACE_Z);
+  // rotation.y intentionally 0 — parallel to road/fence/trees/benches
   terrace.receiveShadow = true;
   scene.add(terrace);
 
