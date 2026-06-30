@@ -1,52 +1,44 @@
 import * as THREE from 'three';
 
 /**
- * Jubala Coffee storefront — gold name sign, floor-to-ceiling glass wall,
- * red vertical blade sign, and a continuous raised terrace along the full
- * Park Central North Hills north facade.
+ * Jubala Coffee storefront — gold name sign, floor-to-ceiling glass panes,
+ * red vertical blade sign, and a raised entry terrace in front of the storefront.
+ *
+ * Built as a single THREE.Group (AGENTS.md: "Hand-placed scene props belong
+ * inside a THREE.Group, positioned + rotated as a unit"). The group is placed
+ * at (JX, 0, JZ) and rotated JROT once; every storefront mesh is a child with
+ * LOCAL coordinates, where local -Z is the street-facing front. This keeps
+ * position and orientation in one convention — three.js rotation.y — instead
+ * of hand-rotating world offsets (the previous applyY() helper rotated by
+ * -JROT, opposite to rotation.y, which left the glass panes non-coplanar).
  *
  * Wall reference: polygon edge (323.9,283.8)→(240.3,250.5) in scene space.
- * Outward normal: (0.371, 0, -0.929). JROT = +0.379 rad aligns local +X
- * with wall direction (240.3,250.5)→(323.9,283.8) so the 90m terrace box
- * spans the wall endpoints exactly.
+ * Under three.js rotation.y(+JROT), local -Z (the storefront front) faces
+ * (-sin JROT, 0, -cos JROT) = (-0.371, 0, -0.929) — north toward the street.
  *
  * Coordinate conventions: +X east, +Z south, +Y up.
  */
 
 // ── Jubala storefront constants ─────────────────────────────────────────────
 const JX   = 291;      // centre X  (from OSM node -78.6368506, 35.8359373)
-const JZ   = 271.5;    // centre Z  (north wall at x=291 is z≈270.7; JZ=271.5 puts
-                       //             glass/sign at z≈270.5, just in front of the wall)
+const JZ   = 271.5;    // centre Z  (north wall at x=291 is z≈270.7)
 const JW   = 14;       // width  (m) along wall
 const JD   = 2;        // depth  (m) — thin facade slab
-const JH   = 5;        // height (m)
-// Wall outward normal: (0.371, 0, -0.929).  frontDir = applyY((0,0,-1), JROT).
-// frontDir.x = sin(JROT), frontDir.z = -cos(JROT).
-// → sin(JROT)=0.371, cos(JROT)=0.929 → JROT = +0.379 (not -0.379).
-const JROT = +0.379;
+const JH   = 5;        // height (m) above terrace
+const JROT = +0.379;   // wall angle — applied once to the group
 
-// ── Park Central north-wall terrace constants ───────────────────────────────
-// Axis-aligned (east-west, rotation.y=0) so the slab stays at constant z
-// across its full width. The wall's NW end is at (240, 250) — only 5m from
-// the park; a diagonal slab at JROT would extend into the park at the west end.
-// Width 84m covers the wall's x-span (x=240→324). Center z=266 places the
-// slab in the grey zone between the fence (~z=263) and the building base (~z=271).
-const TERRACE_X   = 282;   // centre x (midpoint of wall x-span 240→324)
-const TERRACE_Z   = 266;   // centre z (east-west strip at building base)
-const TERRACE_W   = 84;    // east-west width matching wall x-span (m)
-const TERRACE_D   = 6;     // z-depth (fence to building base)
-const TERRACE_H   = 1.0;   // slab height — must clear the fence railing (~0.9 m)
-
-// ── Helper: rotate offset vector around Y ──────────────────────────────────
-function applyY(v: THREE.Vector3, angle: number): THREE.Vector3 {
-  const cos = Math.cos(angle);
-  const sin = Math.sin(angle);
-  return new THREE.Vector3(
-    v.x * cos - v.z * sin,
-    v.y,
-    v.x * sin + v.z * cos,
-  );
-}
+// ── Entry terrace — aligned to Park Central block angle (JROT) ──────────────
+// Hand-tuned world centre (TERRACE_X/TERRACE_Z): back face flush with the
+// Park Central north wall (z≈271.3), front face at z≈265.7, clear of the park
+// fence (z≈263). Expressed in the group's local frame inside buildJubalaDecor
+// so the group rotation applies uniformly. Per CONCEPTS.md, Park Central's
+// bbox is x[188..324] z[236..327]; the storefront is intentionally mounted on
+// its north wall (JZ=271.5 is inside that z-range by design).
+const TERRACE_H = 1.8;    // raised platform height
+const TERRACE_D = 6.0;    // depth: back face at building wall, front at z≈265.7
+const TERRACE_W = 16;     // width along wall face (slightly wider than JW=14)
+const TERRACE_X = JX + Math.sin(JROT) * 1.0;   // ≈ 291.4 (world)
+const TERRACE_Z = 268.5;                         // centre z (world): back face at z≈271.3
 
 // ── Canvas texture helpers ──────────────────────────────────────────────────
 
@@ -85,44 +77,95 @@ function makeBladeTexture(): THREE.CanvasTexture {
 
 // ── Main export ─────────────────────────────────────────────────────────────
 
-/**
- * Build the Jubala Coffee storefront and the full-wall entry terrace, adding
- * all meshes to the scene. Returns opaque collision meshes for collision.build().
- */
 export function buildJubalaDecor(scene: THREE.Scene): THREE.Mesh[] {
-  const ry = JROT;
+  // One group, placed + rotated as a unit (AGENTS.md convention). Children use
+  // local coordinates; local -Z is the street-facing front. This replaces the
+  // prior per-mesh scene.add() with hand-rotated world offsets.
+  const group = new THREE.Group();
+  group.position.set(JX, 0, JZ);
+  group.rotation.y = JROT;
+  scene.add(group);
 
-  // frontDir: direction the storefront faces (outward from building wall)
-  // = applyY((0,0,-1), JROT) = (sin(JROT), 0, -cos(JROT)) = (0.371, 0, -0.929)
-  const frontDir = applyY(new THREE.Vector3(0, 0, -1), ry);
+  // ── Entry terrace ──────────────────────────────────────────────────────────
+  const terrace = new THREE.Mesh(
+    new THREE.BoxGeometry(TERRACE_W, TERRACE_H, TERRACE_D),
+    new THREE.MeshStandardMaterial({ color: 0xB8B4AE, flatShading: true }),
+  );
+  // Terrace was hand-tuned in world coords (TERRACE_X/TERRACE_Z); express that
+  // world delta from the group origin in the group's local frame so its world
+  // position is preserved under the group rotation.
+  const terraceLocal = new THREE.Vector3(TERRACE_X - JX, TERRACE_H / 2, TERRACE_Z - JZ)
+    .applyAxisAngle(new THREE.Vector3(0, 1, 0), -JROT);
+  terrace.position.copy(terraceLocal);
+  terrace.receiveShadow = true;
+  group.add(terrace);
 
-  // ── Body — thin facade slab ────────────────────────────────────────────────
+  // ── Body — thin facade slab, base sits on top of terrace ──────────────────
   const body = new THREE.Mesh(
     new THREE.BoxGeometry(JW, JH, JD),
     new THREE.MeshStandardMaterial({ color: 0xC2B8A3, flatShading: true }),
   );
-  body.position.set(JX, JH / 2, JZ);
-  body.rotation.y = ry;
+  body.position.set(0, TERRACE_H + JH / 2, 0);
   body.castShadow = true;
   body.receiveShadow = true;
-  scene.add(body);
+  group.add(body);
 
-  // ── Glass wall — sits just in front of the building wall face ──────────────
-  // With JZ=271.5, glass lands at z≈270.5 — 0.2 m north of the wall at z≈270.7.
-  const glassH = 3.5;
+  // ── Glass panes — 4 bays separated by aluminum mullions ───────────────────
+  const PANE_COLS   = 4;
+  const MULLION_T   = 0.12;   // mullion thickness (m)
+  const paneW       = (JW - MULLION_T * (PANE_COLS + 1)) / PANE_COLS;  // ≈ 3.22 m
+  const glassH      = JH - 0.1;   // glass height (slight inset from body top)
+  const glassFaceZ  = JD / 2 + 0.08;   // local -Z: just in front of the body face
+
   const glassMat = new THREE.MeshStandardMaterial({
-    color: 0x7FAFC9,
-    metalness: 0.70,
-    roughness: 0.08,
+    color: 0xC8E4F0,
+    metalness: 0.82,
+    roughness: 0.04,
     transparent: true,
-    opacity: 0.35,
+    opacity: 0.30,
     side: THREE.DoubleSide,
   });
-  const glass = new THREE.Mesh(new THREE.PlaneGeometry(JW, glassH), glassMat);
-  const glassOffset = frontDir.clone().multiplyScalar(JD / 2 + 0.08);
-  glass.position.set(JX + glassOffset.x, glassH / 2, JZ + glassOffset.z);
-  glass.rotation.y = ry + Math.PI;
-  scene.add(glass);
+
+  const mullionMat = new THREE.MeshStandardMaterial({
+    color: 0xD8D8D8,   // light aluminum — matches reference image
+    metalness: 0.55,
+    roughness: 0.25,
+  });
+
+  // Glass panes — local -Z is the street-facing front
+  for (let i = 0; i < PANE_COLS; i++) {
+    const localX = -JW / 2 + MULLION_T * (i + 1) + paneW * (i + 0.5);
+    const pane = new THREE.Mesh(new THREE.PlaneGeometry(paneW, glassH), glassMat.clone());
+    pane.position.set(localX, TERRACE_H + glassH / 2, -glassFaceZ);
+    pane.rotation.y = Math.PI;   // face local -Z (street)
+    group.add(pane);
+  }
+
+  // Vertical mullion bars (PANE_COLS + 1 bars: left edge, between panes, right edge)
+  for (let i = 0; i <= PANE_COLS; i++) {
+    const localX = -JW / 2 + MULLION_T * (i + 0.5) + paneW * i;
+    const bar = new THREE.Mesh(
+      new THREE.BoxGeometry(MULLION_T, glassH + 0.15, 0.10),
+      mullionMat,
+    );
+    bar.position.set(localX, TERRACE_H + glassH / 2, -(JD / 2 + 0.05));
+    group.add(bar);
+  }
+
+  // Horizontal rails: header at top, sill at terrace level, mid transom
+  const railPositions = [
+    TERRACE_H,                    // sill (at terrace deck)
+    TERRACE_H + glassH * 0.45,   // mid transom
+    TERRACE_H + glassH,          // header
+  ];
+  for (const y of railPositions) {
+    const rail = new THREE.Mesh(
+      new THREE.BoxGeometry(JW + MULLION_T, 0.10, 0.10),
+      mullionMat,
+    );
+    rail.position.set(0, y, -(JD / 2 + 0.05));
+    group.add(rail);
+  }
 
   // ── Gold name sign — MeshBasicMaterial (unlit, always full gold) ──────────
   const signW = Math.min(JW * 0.72, 10);
@@ -132,10 +175,9 @@ export function buildJubalaDecor(scene: THREE.Scene): THREE.Mesh[] {
     alphaTest: 0.05,
   });
   const sign = new THREE.Mesh(new THREE.PlaneGeometry(signW, 0.9), signMat);
-  const signOffset = frontDir.clone().multiplyScalar(JD / 2 + 0.06);
-  sign.position.set(JX + signOffset.x, 4.1, JZ + signOffset.z);
-  sign.rotation.y = ry + Math.PI;
-  scene.add(sign);
+  sign.position.set(0, TERRACE_H + JH - 0.6, -(JD / 2 + 0.06));
+  sign.rotation.y = Math.PI;   // face local -Z (street)
+  group.add(sign);
 
   // ── Red "COFFEE" blade sign (MeshBasicMaterial — vivid red always) ─────────
   const bladeMat = new THREE.MeshBasicMaterial({
@@ -145,25 +187,9 @@ export function buildJubalaDecor(scene: THREE.Scene): THREE.Mesh[] {
     alphaTest: 0.05,
   });
   const blade = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 3.0), bladeMat);
-  const bladeLocalOffset = new THREE.Vector3(-(JW / 2 - 0.5), 0, -(JD / 2 + 0.2));
-  const bladeWorldOffset = applyY(bladeLocalOffset, ry);
-  blade.position.set(JX + bladeWorldOffset.x, 2.5, JZ + bladeWorldOffset.z);
-  blade.rotation.y = ry + Math.PI / 2;
-  scene.add(blade);
-
-  // ── Full-wall entry terrace ────────────────────────────────────────────────
-  // East-west axis-aligned slab (rotation.y=0) covering the grey ground strip
-  // at the Park Central north facade. No JROT angle — a diagonal slab's west
-  // end would reach z≈248 (inside the park). Fixed x/z centres keep every
-  // point of the slab at z=263–269, well clear of the park.
-  const terrace = new THREE.Mesh(
-    new THREE.BoxGeometry(TERRACE_W, TERRACE_H, TERRACE_D),
-    new THREE.MeshStandardMaterial({ color: 0xB4B0AA, flatShading: true }),
-  );
-  terrace.position.set(TERRACE_X, TERRACE_H / 2, TERRACE_Z);
-  // rotation.y intentionally 0 — parallel to road/fence/trees/benches
-  terrace.receiveShadow = true;
-  scene.add(terrace);
+  blade.position.set(-(JW / 2 - 0.5), TERRACE_H + 2.5, -(JD / 2 + 0.2));
+  blade.rotation.y = Math.PI / 2;   // perpendicular to the facade
+  group.add(blade);
 
   return [body, terrace];
 }
