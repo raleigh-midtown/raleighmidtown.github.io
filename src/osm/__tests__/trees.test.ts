@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
 import type { FeatureCollection } from 'geojson';
-import { buildTrees, stAlbansGreenspaceEdgeRows } from '../trees';
+import { buildTrees, stAlbansGreenspaceEdgeRows, midtownParkRows } from '../trees';
 import type { TreePrototype } from '../../scene/treeFactory';
 
 // Stub prototypes so buildTrees is testable without running ez-tree (needs DOM).
@@ -169,5 +169,42 @@ describe('stAlbansGreenspaceEdgeRows', () => {
       }],
     };
     expect(stAlbansGreenspaceEdgeRows(geojson, 8, 511)).toHaveLength(0);
+  });
+});
+
+describe('midtownParkRows', () => {
+  // Midtown Park lawn strip is z[225,236] — between Midtown Green (south face
+  // z≈225) and Park Central (north face z≈236). The two long-edge rows line it.
+  it('is sparse: ~7 trees per long row, not the old dense ~78', () => {
+    const pts = midtownParkRows();
+    // 14 expected (7 north + 7 south). Range allows modest spacing tuning but
+    // fails hard if spacing is tightened (→ ~78) or short-edge rows are re-added.
+    expect(pts.length).toBeGreaterThanOrEqual(10);
+    expect(pts.length).toBeLessThanOrEqual(16);
+  });
+
+  it('lines only the two long edges within the lawn strip (no short-end rows)', () => {
+    const pts = midtownParkRows();
+    // Every tree sits in the lawn strip z[225,236]. The old east-edge short row
+    // ran to z=268 — this rejects any such overflow.
+    for (const [, z] of pts) {
+      expect(z).toBeGreaterThanOrEqual(225);
+      expect(z).toBeLessThanOrEqual(236);
+    }
+    // Both long rows present: a north row (z<230) and a south row (z>=230).
+    const north = pts.filter(([, z]) => z < 230).length;
+    const south = pts.filter(([, z]) => z >= 230).length;
+    expect(north).toBeGreaterThanOrEqual(5);
+    expect(south).toBeGreaterThanOrEqual(5);
+    expect(north + south).toBe(pts.length);
+    // Rows span the long way across the park (x[241,346]); last tree lands
+    // near t=96 of the 105-unit row, so max x ≈ 337.
+    const xs = pts.map(p => p[0]);
+    expect(Math.min(...xs)).toBeLessThanOrEqual(245);
+    expect(Math.max(...xs)).toBeGreaterThanOrEqual(330);
+  });
+
+  it('is deterministic', () => {
+    expect(midtownParkRows()).toEqual(midtownParkRows());
   });
 });

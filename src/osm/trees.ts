@@ -42,6 +42,23 @@ function treeRow(
   return pts;
 }
 
+// Midtown Park border trees — two sparse rows lining the long edges of the lawn
+// strip between Midtown Green (south face z≈225) and Park Central (north face
+// z≈236). Spacing 16 m → ~7 trees per row, ~14 total. Short ends (west strip,
+// east edge) are left open per the "long edges only" intent.
+//
+// Coordinates are hand-tuned to the building faces rather than derived from the
+// OSM park polygon: the park polygon overlaps the adjacent apartment buildings
+// (its north edge runs z=201→234, well north of Midtown Green's z=225 face), so
+// lining the polygon edge would place trees inside the buildings. The building
+// faces are the real, visible lawn boundary.
+export function midtownParkRows(): [number, number][] {
+  const positions: [number, number][] = [];
+  positions.push(...treeRow(241, 227, 346, 227, 16, 1.0, 303)); // north long edge (along Midtown Green)
+  positions.push(...treeRow(241, 233, 346, 233, 16, 1.0, 404)); // south long edge (along Park Central)
+  return positions;
+}
+
 // Road center z interpolated along St Albans Drive path (100,-200)→(250,-180)→(400,-150).
 // (see midtownScene.ts ROADS array for the source of these waypoints)
 function stAlbansRoadZ(x: number): number {
@@ -132,26 +149,10 @@ export function buildTrees(geojson: FeatureCollection, prototypes?: TreePrototyp
   const group = new THREE.Group();
   const positions: [number, number][] = [];
 
-  // ── Midtown Park perimeter trees ──────────────────────────────────────────
-  // Park bounds: x[241,346] z[201,270]
-  // Adjacent buildings (bounding boxes):
-  //   Chuy's:        x[209,246] z[193,230]  — NW corner
-  //   Midtown Green: x[229,369] z[147,225]  — north side (apartment building)
-  //   Park Central:  x[188,324] z[236,327]  — south/west sides
-  //
-  // Safe zones — rows placed in the lawn strips that are clear of all building footprints:
-  //   Park Central (x[188,324] z[236,327]) abuts the south/west; its NORTH face is at z=236.
-  //   Chuy's (x[209,246] z[193,230]) sits in the NW corner; its SOUTH face is at z=230.
-  //   Midtown Green (x[229,369] z[147,225]) is the north wall; its SOUTH face is at z=225.
-  //
-  //   West strip (x=244): only z=231–235 is clear (between Chuy's south z=230 and Park Central north z=236)
-  //   East edge (x=343): clear from z=227 down to z=268 (x=343 is east of Park Central x_max=324)
-  //   North row (z=227): x=241–346, 2 m south of Midtown Green south face (z=225)
-  //   South row (z=233): x=241–346, 3 m north of Park Central north face (z=236)
-  positions.push(...treeRow(244, 231, 244, 235, 2, 1.0, 101));  // west strip (between Chuy's and Park Central)
-  positions.push(...treeRow(343, 227, 343, 268, 2, 1.0, 202));  // east edge (clear of Park Central)
-  positions.push(...treeRow(241, 227, 346, 227, 4, 1.0, 303));  // north long edge
-  positions.push(...treeRow(241, 233, 346, 233, 4, 1.0, 404));  // south long edge (north of Park Central)
+  // ── Midtown Park — sparse rows along the two long edges only ───────────────
+  // See midtownParkRows: rows follow the building faces (the visible lawn
+  // boundary), not the OSM park polygon (which overlaps the buildings).
+  positions.push(...midtownParkRows());
 
   // ── St Albans Drive — dense screen row beside road sidewalk ───────────────
   // Use OSM greenspace polygon inner boundary when live data is present; fall back
