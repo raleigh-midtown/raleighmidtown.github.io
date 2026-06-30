@@ -1,8 +1,10 @@
 import * as THREE from 'three';
+import { TERRACE_H } from './parkCentralTerrace';
 
 /**
  * Jubala Coffee storefront — gold name sign, floor-to-ceiling glass panes,
- * red vertical blade sign, and a raised entry terrace in front of the storefront.
+ * red vertical blade sign, mounted on the shared Park Central north-wall
+ * terrace (see parkCentralTerrace.ts).
  *
  * Built as a single THREE.Group (AGENTS.md: "Hand-placed scene props belong
  * inside a THREE.Group, positioned + rotated as a unit"). The group is placed
@@ -20,6 +22,11 @@ import * as THREE from 'three';
  * be -0.379 rad. (A +0.379 sign mirrors it to N 21.7° W — NW — and skews the
  * width 43.4° across the wall; that was the prior bug.)
  *
+ * The storefront no longer carries its own entry terrace: the full-wall
+ * Park Central terrace (parkCentralTerrace.ts) provides the raised platform,
+ * so the body base sits on that shared deck at y = TERRACE_H. TERRACE_H is
+ * imported from the terrace module so the two stay coplanar.
+ *
  * Coordinate conventions: +X east, +Z south, +Y up.
  */
 
@@ -30,27 +37,6 @@ const JW   = 14;       // width  (m) along wall
 const JD   = 2;        // depth  (m) — thin facade slab
 const JH   = 5;        // height (m) above terrace
 const JROT = -0.379;   // wall angle — applied once to the group (−: front faces N 21.7° E)
-
-// ── Entry terrace — rotated with the group (parallel to the road/wall) ───────
-// The Park Central wall edge and the adjacent road ("Park At North Hills
-// Street") both run at ~21.7° (= JROT), so the storefront group is rotated JROT
-// to face the road. The terrace is a child of that group so it inherits JROT
-// and stays parallel to the road/wall/storefront — an axis-aligned (0°) terrace
-// would sit 21.7° skew to the road it borders. Width is along the wall (local
-// X), depth is perpendicular (local Z, -Z toward the street).
-//
-// Tuning: a rotated 16×6 m terrace projects its width onto world-Z, so the
-// local z centre is set to TERRACE_LOCAL_Z = -2.5 (back face at local +0.5,
-// front at local -5.5). That keeps the front-left (west) corner at world
-// z≈263.4 — just clear of the park fence (z≈263) — while the back-right
-// (east) corner (z≈274.9) stays no deeper into Park Central than the
-// storefront body already is. Per
-// CONCEPTS.md, Park Central's bbox is x[188..324] z[236..327]; the storefront
-// is mounted on its closest wall to the Jubala POI.
-const TERRACE_H = 1.8;        // raised platform height
-const TERRACE_W = 16;         // width along the wall/road (local X), slightly > JW=14
-const TERRACE_D = 6.0;        // depth perpendicular to the wall (local Z)
-const TERRACE_LOCAL_Z = -2.5; // local z centre: front at -5.5 (toward road), back at +0.5 (wall)
 
 // ── Canvas texture helpers ──────────────────────────────────────────────────
 
@@ -98,20 +84,7 @@ export function buildJubalaDecor(scene: THREE.Scene): THREE.Mesh[] {
   group.rotation.y = JROT;
   scene.add(group);
 
-  // ── Entry terrace — child of the rotated group, parallel to the road ───────
-  // Inherits the group's JROT rotation so it runs parallel to the Park Central
-  // wall and the adjacent road (both ~21.7°), matching the storefront. Local z
-  // centre TERRACE_LOCAL_Z = -2.5 tunes the offset so the front-left (west)
-  // corner clears the park fence (z≈263); see the TERRACE constants comment.
-  const terrace = new THREE.Mesh(
-    new THREE.BoxGeometry(TERRACE_W, TERRACE_H, TERRACE_D),
-    new THREE.MeshStandardMaterial({ color: 0xB8B4AE, flatShading: true }),
-  );
-  terrace.position.set(0, TERRACE_H / 2, TERRACE_LOCAL_Z);
-  terrace.receiveShadow = true;
-  group.add(terrace);
-
-  // ── Body — thin facade slab, base sits on top of terrace ──────────────────
+  // ── Body — thin facade slab, base sits on the shared Park Central terrace ─
   const body = new THREE.Mesh(
     new THREE.BoxGeometry(JW, JH, JD),
     new THREE.MeshStandardMaterial({ color: 0xC2B8A3, flatShading: true }),
@@ -202,5 +175,5 @@ export function buildJubalaDecor(scene: THREE.Scene): THREE.Mesh[] {
   blade.rotation.y = Math.PI / 2;   // perpendicular to the facade
   group.add(blade);
 
-  return [body, terrace];
+  return [body];
 }
