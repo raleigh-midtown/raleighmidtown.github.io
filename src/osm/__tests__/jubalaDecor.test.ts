@@ -73,14 +73,13 @@ function collect<T extends THREE.Object3D>(scene: THREE.Scene, pred: (o: THREE.O
 }
 
 describe('buildJubalaDecor — collision contract (U1/U5, R4/R5)', () => {
-  it('returns exactly [body, terrace] for collision.build()', () => {
+  it('returns exactly [body] for collision.build()', () => {
     const { meshes } = build();
-    expect(meshes).toHaveLength(2);
+    expect(meshes).toHaveLength(1);
     expect(meshes[0]).toBeInstanceOf(THREE.Mesh);
-    expect(meshes[1]).toBeInstanceOf(THREE.Mesh);
-    // body is the facade slab (BoxGeometry); terrace is the raised platform (BoxGeometry)
+    // body is the facade slab (BoxGeometry); the raised platform is provided
+    // by the shared Park Central terrace (parkCentralTerrace.ts), not here.
     expect(meshes[0].geometry instanceof THREE.BoxGeometry).toBe(true);
-    expect(meshes[1].geometry instanceof THREE.BoxGeometry).toBe(true);
   });
 
   it('body is a shadow-casting facade slab', () => {
@@ -163,63 +162,6 @@ describe('buildJubalaDecor — glass wall coplanarity (R2/R6, the applyY bug)', 
     expect(mat.opacity).toBeGreaterThanOrEqual(0.25);
     expect(mat.opacity).toBeLessThanOrEqual(0.5);
     expect(mat.side).toBe(THREE.DoubleSide);
-  });
-});
-
-describe('buildJubalaDecor — entry terrace aligned to the road (JROT)', () => {
-  // The Park Central wall and the adjacent road ("Park At North Hills Street")
-  // both run at ~21.7°, so the storefront group is rotated JROT=-0.379 to make
-  // local -Z face the wall's outward normal (N 21.7° E, toward the road). The
-  // terrace must share that rotation so the whole assembly is parallel to the
-  // road/wall — an axis-aligned (0°) terrace would be 21.7° off from the road it
-  // sits beside. The terrace is tuned (width 16, depth 6, local z centre -2.5)
-  // so its rotated front-left (west) corner still clears the park fence (z≈263).
-  // These tests lock the road-alignment + fence-clearance invariants.
-  const JROT_LOCAL = -0.379;
-
-  /** World-space z-extent of a mesh's geometry, via localToWorld on each vertex. */
-  function worldZExtent(mesh: THREE.Mesh): { min: number; max: number; span: number } {
-    const geo = mesh.geometry as THREE.BufferGeometry;
-    const pos = geo.attributes.position;
-    const v = new THREE.Vector3();
-    let min = Infinity, max = -Infinity;
-    for (let i = 0; i < pos.count; i++) {
-      v.fromBufferAttribute(pos, i);
-      mesh.localToWorld(v);
-      min = Math.min(min, v.z);
-      max = Math.max(max, v.z);
-    }
-    return { min, max, span: max - min };
-  }
-
-  /** World yaw of a mesh, normalized to (-π, π]. */
-  function worldYaw(mesh: THREE.Mesh): number {
-    const q = mesh.getWorldQuaternion(new THREE.Quaternion());
-    const yaw = new THREE.Euler().setFromQuaternion(q, 'YXZ').y;
-    return ((yaw + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI;
-  }
-
-  it('terrace world yaw ≈ JROT (rotated to the road/wall, not axis-aligned)', () => {
-    const { scene, meshes } = build();
-    scene.updateWorldMatrix(true, true);
-    expect(Math.abs(worldYaw(meshes[1]) - JROT_LOCAL)).toBeLessThan(0.01);
-  });
-
-  it('terrace is parallel to the storefront body (same world yaw)', () => {
-    const { scene, meshes } = build();
-    scene.updateWorldMatrix(true, true);
-    const body = meshes[0];
-    const terrace = meshes[1];
-    expect(Math.abs(worldYaw(terrace) - worldYaw(body))).toBeLessThan(0.01);
-  });
-
-  it('terrace stays clear of the park fence (world min z ≥ 263)', () => {
-    const { scene, meshes } = build();
-    scene.updateWorldMatrix(true, true);
-    const { min } = worldZExtent(meshes[1]);
-    // A rotated 16×6 terrace tuned to local z centre -2.5 keeps its front-left
-    // (west) corner at z≈263.4 — just clear of the z≈263 fence.
-    expect(min).toBeGreaterThanOrEqual(263);
   });
 });
 
