@@ -94,6 +94,12 @@ export function generateTreePrototypes(
     const tree = new Tree();
     tree.loadPreset(preset); // copies preset options (also generates once)
     tree.options.seed = seedBase + i;
+    // The stock 'Oak Small' preset applies a slight downward growth force
+    // (branch.force.strength = -0.01) that droops the lowest sub-branches to
+    // ~1.5m — face height on the 1.8m character (1 scene unit = 1m). Removing
+    // it lifts the canopy floor to ~2.3m without changing the silhouette much
+    // (the force is tiny); the trunk base stays at the ground either way.
+    tree.options.branch.force.strength = 0;
     tree.generate(); // regenerate with our seed for determinism
 
     const branchGeo = tree.branchesMesh.geometry;

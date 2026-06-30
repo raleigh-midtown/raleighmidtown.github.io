@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import { buildTreeInstances, type TreePrototype } from '../treeFactory';
+import { buildTreeInstances, generateTreePrototypes, type TreePrototype } from '../treeFactory';
 
 // Stub prototypes so the instancing logic is testable without running ez-tree,
 // which needs a DOM (texture/image pipeline) to generate().
@@ -105,5 +105,30 @@ describe('buildTreeInstances', () => {
   it('returns an empty group for empty inputs', () => {
     expect(buildTreeInstances([], positions(5), 1).children).toHaveLength(0);
     expect(buildTreeInstances(protos(2), [], 1).children).toHaveLength(0);
+  });
+});
+
+// Real ez-tree generation (jsdom provides the DOM ez-tree needs). The stub-based
+// tests above cover instancing math; this one covers the procedural canopy
+// shape that only ez-tree can produce.
+describe('generateTreePrototypes (real ez-tree)', () => {
+  // Regression: the stock 'Oak Small' preset applies a downward growth force
+  // (branch.force.strength = -0.01) that droops the lowest sub-branches to
+  // ~1.5m — face height on the 1.8m character (1 scene unit = 1m; see
+  // character/controller.ts HEAD_HEIGHT=1.7). The factory must lift the canopy
+  // so the lowest foliage clears a person's head.
+  it('lowest canopy foliage clears head height across prototypes', () => {
+    const protos = generateTreePrototypes(4, 24601);
+    expect(protos.length).toBe(4);
+
+    // 2.0m = above the 1.8m character at prototype (normScale) size. Leaves are
+    // the lowest canopy points and track the drooping branch tips, so leaf
+    // bounding-box min.y * normScale is the canopy floor in meters.
+    const MIN_CLEARANCE_M = 2.0;
+    for (const p of protos) {
+      p.leafGeo.computeBoundingBox();
+      const canopyFloorM = (p.leafGeo.boundingBox!.min.y ?? 0) * p.normScale;
+      expect(canopyFloorM).toBeGreaterThanOrEqual(MIN_CLEARANCE_M);
+    }
   });
 });
