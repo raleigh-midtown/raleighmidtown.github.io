@@ -1,8 +1,25 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
 import type { FeatureCollection } from 'geojson';
-import { buildTrees, stAlbansGreenspaceEdgeRows, midtownParkRows } from '../trees';
+import { buildTrees, stAlbansGreenspaceEdgeRows, parkLongEdgeTreeRows } from '../trees';
+import { pointInRing, type BBox, type Pt } from '../util/geom';
 import type { TreePrototype } from '../../scene/treeFactory';
+
+// Distance from point (px,pz) to segment a→b.
+function distToSeg(px: number, pz: number, ax: number, az: number, bx: number, bz: number): number {
+  const dx = bx - ax, dz = bz - az;
+  const L2 = dx * dx + dz * dz;
+  if (L2 === 0) return Math.hypot(px - ax, pz - az);
+  let t = ((px - ax) * dx + (pz - az) * dz) / L2;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(px - (ax + t * dx), pz - (az + t * dz));
+}
+
+// Rectangular building box (closed ring + bbox) for isInsideAnyBuilding tests.
+function mkBox(minX: number, maxX: number, minZ: number, maxZ: number): BBox {
+  const ring: Pt[] = [[minX, minZ], [maxX, minZ], [maxX, maxZ], [minX, maxZ], [minX, minZ]];
+  return { minX, maxX, minZ, maxZ, ring };
+}
 
 // Stub prototypes so buildTrees is testable without running ez-tree (needs DOM).
 function stubProtos(n: number): TreePrototype[] {
@@ -172,39 +189,56 @@ describe('stAlbansGreenspaceEdgeRows', () => {
   });
 });
 
-describe('midtownParkRows', () => {
-  // Midtown Park lawn strip is z[225,236] — between Midtown Green (south face
-  // z≈225) and Park Central (north face z≈236). The two long-edge rows line it.
-  it('is sparse: ~7 trees per long row, not the old dense ~78', () => {
-    const pts = midtownParkRows();
-    // 14 expected (7 north + 7 south). Range allows modest spacing tuning but
-    // fails hard if spacing is tightened (→ ~78) or short-edge rows are re-added.
-    expect(pts.length).toBeGreaterThanOrEqual(10);
-    expect(pts.length).toBeLessThanOrEqual(16);
+describe('parkLongEdgeTreeRows', () => {
+  // Parallelogram park in scene meters with DIAGONAL long edges (~92) + two
+  // short edges (~38). Mirrors the real Midtown Park shape: the long edges run
+  // east-to-west but slope in z, so a correct row must follow the diagonal, not
+  // hold a constant z.
+  const A: Pt = [340, 234], B: Pt = [255, 201], C: Pt = [241, 236], D: Pt = [327, 270];
+  const park: Pt[] = [A, B, C, D, A];
+  const longEdges = [[A, B], [C, D]];
+  const shortEdges = [[B, C], [D, A]];
+
+  it('places sparse trees along the two diagonal long edges, inside the park', () => {
+    const pts = parkLongEdgeTreeRows(park, [], 16, 3);
+    // 5 per long edge (floor(92/16)=5), none dropped → 10.
+    expect(pts.length).toBe(10);
+    // Every tree sits inside the park polygon (inward offset + centered placement).
+    for (const [x, z] of pts) expect(pointInRing(x, z, park)).toBe(true);
+    // Every tree is near a long edge and well clear of the short-edge midpoints
+    // (i.e. trees line the long sides, not the short ends or the lawn interior).
+    const shortMids = shortEdges.map(e => [(e[0][0] + e[1][0]) / 2, (e[0][1] + e[1][1]) / 2] as [number, number]);
+    for (const [x, z] of pts) {
+      const dLong = Math.min(...longEdges.map(e => distToSeg(x, z, e[0][0], e[0][1], e[1][0], e[1][1])));
+      const dShortMid = Math.min(...shortMids.map(m => Math.hypot(x - m[0], z - m[1])));
+      expect(dLong).toBeLessThan(6);
+      expect(dShortMid).toBeGreaterThan(6);
+    }
+    // The rows FOLLOW the diagonal: each long edge's trees span >20 in z
+    // (a horizontal row would span ~0). Both edges get trees.
+    const ab = pts.filter(p => distToSeg(p[0], p[1], A[0], A[1], B[0], B[1]) < distToSeg(p[0], p[1], C[0], C[1], D[0], D[1]));
+    const cd = pts.filter(p => distToSeg(p[0], p[1], C[0], C[1], D[0], D[1]) <= distToSeg(p[0], p[1], A[0], A[1], B[0], B[1]));
+    expect(ab.length).toBeGreaterThanOrEqual(4);
+    expect(cd.length).toBeGreaterThanOrEqual(4);
+    const zSpan = (xs: Pt[]) => Math.max(...xs.map(p => p[1])) - Math.min(...xs.map(p => p[1]));
+    expect(zSpan(ab)).toBeGreaterThan(20);
+    expect(zSpan(cd)).toBeGreaterThan(20);
   });
 
-  it('lines only the two long edges within the lawn strip (no short-end rows)', () => {
-    const pts = midtownParkRows();
-    // Every tree sits in the lawn strip z[225,236]. The old east-edge short row
-    // ran to z=268 — this rejects any such overflow.
-    for (const [, z] of pts) {
-      expect(z).toBeGreaterThanOrEqual(225);
-      expect(z).toBeLessThanOrEqual(236);
+  it('drops trees that fall inside a building footprint (benches-style guard)', () => {
+    // Box overlapping the B-end of long edge A-B catches the tree nearest B.
+    const boxes = [mkBox(255, 275, 200, 215)];
+    const pts = parkLongEdgeTreeRows(park, boxes, 16, 3);
+    // Fewer than the unobstructed 10, and no tree remains inside the box.
+    expect(pts.length).toBeLessThan(10);
+    for (const [x, z] of pts) {
+      expect(!(x >= 255 && x <= 275 && z >= 200 && z <= 215)).toBe(true);
     }
-    // Both long rows present: a north row (z<230) and a south row (z>=230).
-    const north = pts.filter(([, z]) => z < 230).length;
-    const south = pts.filter(([, z]) => z >= 230).length;
-    expect(north).toBeGreaterThanOrEqual(5);
-    expect(south).toBeGreaterThanOrEqual(5);
-    expect(north + south).toBe(pts.length);
-    // Rows span the long way across the park (x[241,346]); last tree lands
-    // near t=96 of the 105-unit row, so max x ≈ 337.
-    const xs = pts.map(p => p[0]);
-    expect(Math.min(...xs)).toBeLessThanOrEqual(245);
-    expect(Math.max(...xs)).toBeGreaterThanOrEqual(330);
+    // The opposite long edge is unaffected.
+    expect(pts.length).toBeGreaterThanOrEqual(8);
   });
 
   it('is deterministic', () => {
-    expect(midtownParkRows()).toEqual(midtownParkRows());
+    expect(parkLongEdgeTreeRows(park, [], 16, 3)).toEqual(parkLongEdgeTreeRows(park, [], 16, 3));
   });
 });

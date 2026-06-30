@@ -2,7 +2,11 @@ import * as THREE from 'three';
 import type { FeatureCollection, Feature, Polygon } from 'geojson';
 import { projectLonLat } from './project.js';
 import { getSharedTreePrototypes, buildTreeInstances, type TreePrototype } from '../scene/treeFactory.js';
-import type { Pt } from './util/geom.js';
+import {
+  type Pt, type BBox,
+  polygonCentroid, edgeInwardNormal, pointInRing,
+  collectBuildingBoxes, isInsideAnyBuilding,
+} from './util/geom.js';
 
 function seededRng(seed: number) {
   let s = seed >>> 0;
@@ -42,20 +46,49 @@ function treeRow(
   return pts;
 }
 
-// Midtown Park border trees — two sparse rows lining the long edges of the lawn
-// strip between Midtown Green (south face z≈225) and Park Central (north face
-// z≈236). Spacing 16 m → ~7 trees per row, ~14 total. Short ends (west strip,
-// east edge) are left open per the "long edges only" intent.
+// Midtown Park border trees — placed the same way as benches (buildBenches):
+// along the park polygon's two longest edges, centered on each edge, inset
+// inward toward the lawn, and dropped where a candidate falls inside an adjacent
+// building footprint (isInsideAnyBuilding). This makes the trees trace the
+// park's actual diagonal long edges east-to-west, matching the bench rows,
+// instead of cutting straight across at a fixed z.
 //
-// Coordinates are hand-tuned to the building faces rather than derived from the
-// OSM park polygon: the park polygon overlaps the adjacent apartment buildings
-// (its north edge runs z=201→234, well north of Midtown Green's z=225 face), so
-// lining the polygon edge would place trees inside the buildings. The building
-// faces are the real, visible lawn boundary.
-export function midtownParkRows(): [number, number][] {
+// The OSM park polygon overlaps the adjacent apartment buildings, so lining the
+// raw edge would land some trees inside them — the per-candidate building guard
+// (the same one benches use) drops those, leaving trees only on the clear lawn.
+export function parkLongEdgeTreeRows(
+  park: Pt[], boxes: BBox[], spacing: number, inset: number,
+): [number, number][] {
+  if (park.length < 4) return [];
+  const [cx, cz] = polygonCentroid(park);
+  type Edge = { ax: number; az: number; bx: number; bz: number; L: number };
+  const edges: Edge[] = [];
+  let maxLen = 0;
+  for (let i = 0; i < park.length - 1; i++) {
+    const [ax, az] = park[i];
+    const [bx, bz] = park[i + 1];
+    const L = Math.hypot(bx - ax, bz - az);
+    if (L < 3) continue;
+    if (L > maxLen) maxLen = L;
+    edges.push({ ax, az, bx, bz, L });
+  }
+  // The two longest edges = the long sides of the park (east-to-west).
+  const longEdges = edges.filter(e => e.L >= maxLen * 0.6).slice(0, 2);
   const positions: [number, number][] = [];
-  positions.push(...treeRow(241, 227, 346, 227, 16, 1.0, 303)); // north long edge (along Midtown Green)
-  positions.push(...treeRow(241, 233, 346, 233, 16, 1.0, 404)); // south long edge (along Park Central)
+  for (const e of longEdges) {
+    const ux = (e.bx - e.ax) / e.L, uz = (e.bz - e.az) / e.L;
+    const [inX, inZ] = edgeInwardNormal(e.ax, e.az, e.bx, e.bz, cx, cz);
+    // Centered placement (t = (k+0.5)/num) keeps trees off the corners.
+    const num = Math.max(1, Math.floor(e.L / spacing));
+    for (let k = 0; k < num; k++) {
+      const t = (k + 0.5) * (e.L / num);
+      const tx = e.ax + ux * t + inX * inset;
+      const tz = e.az + uz * t + inZ * inset;
+      if (!pointInRing(tx, tz, park)) continue;
+      if (isInsideAnyBuilding(tx, tz, boxes)) continue;
+      positions.push([tx, tz]);
+    }
+  }
   return positions;
 }
 
@@ -149,10 +182,19 @@ export function buildTrees(geojson: FeatureCollection, prototypes?: TreePrototyp
   const group = new THREE.Group();
   const positions: [number, number][] = [];
 
-  // ── Midtown Park — sparse rows along the two long edges only ───────────────
-  // See midtownParkRows: rows follow the building faces (the visible lawn
-  // boundary), not the OSM park polygon (which overlaps the buildings).
-  positions.push(...midtownParkRows());
+  // ── Midtown Park — trees along the two long edges, placed like benches ─────
+  // Follow the park polygon's diagonal long edges (east-to-west), inset inward,
+  // dropping candidates that fall inside adjacent buildings. See
+  // parkLongEdgeTreeRows.
+  const buildingBoxes = collectBuildingBoxes(geojson);
+  for (const feature of geojson.features as Feature[]) {
+    const p = (feature.properties ?? {}) as Record<string, unknown>;
+    if (String(p['name'] ?? '') !== 'Midtown Park' || feature.geometry?.type !== 'Polygon') continue;
+    const raw = (feature.geometry as Polygon).coordinates[0] as number[][];
+    if (raw.length < 4) continue;
+    const ring = raw.map(c => projectLonLat(c[0], c[1]));
+    positions.push(...parkLongEdgeTreeRows(ring, buildingBoxes, 16, 3));
+  }
 
   // ── St Albans Drive — dense screen row beside road sidewalk ───────────────
   // Use OSM greenspace polygon inner boundary when live data is present; fall back
