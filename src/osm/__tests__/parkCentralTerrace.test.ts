@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import { buildParkCentralTerrace } from '../parkCentralTerrace';
+import { buildParkCentralTerrace, TERRACE_LEN, TERRACE_H } from '../parkCentralTerrace';
 
 /**
  * Park Central north-wall terrace — geometry/placement/clearance tests.
@@ -175,10 +175,10 @@ describe('buildParkCentralTerrace — ramped west end, flat deck, sheer east', (
     expect(maxY).toBeCloseTo(1.8, 1); // deck-top height, not a ramp-down
   });
 
-  it('spans the FULL north wall: ramp foot at the west end (point B), not trimmed short', () => {
-    // The bug this guards against: an earlier version trimmed the terrace at
-    // along-wall s=72, so the ramp foot sat at world (271.79, 263.04) instead of
-    // the wall's west end B. The ramp foot (local x≈0, y≈0) must map to B.
+  it('ramp foot at the west end (point B); deck runs to its shortened east end (≈120, a little before the NE corner)', () => {
+    // The ramp foot (local x≈0, y≈0) must map to the wall's west end B. The deck
+    // east end is deliberately shortened from the full wall (128.1) to ~120 per
+    // the user's "a little before eastwards" direction, so the NE corner is open.
     const { meshes } = build();
     const terrace = meshes[0];
     const group = terrace.parent as THREE.Group;
@@ -186,10 +186,11 @@ describe('buildParkCentralTerrace — ramped west end, flat deck, sheer east', (
     const gp = group.getWorldPosition(new THREE.Vector3());
     expect(gp.x).toBeCloseTo(WALL_WEST.x, 1);
     expect(gp.z).toBeCloseTo(WALL_WEST.z, 1);
-    // And the terrace length must equal the full wall length, not a trimmed span.
+    // The terrace length must equal the (shortened) deck length, not the full wall.
     const verts = profileVertices(terrace);
     const maxX = Math.max(...verts.map((p) => p.x));
-    expect(maxX).toBeCloseTo(WALL_LEN, 0); // ≈ 128.1, not 56.1
+    expect(maxX).toBeCloseTo(TERRACE_LEN, 0); // ≈ 120, not 128.1
+    expect(maxX).toBeLessThan(WALL_LEN - 5); // clearly short of the NE corner
   });
 
   it('terrace top at the Jubala location (world x≈291) is flat at y≈1.8', () => {
@@ -199,7 +200,7 @@ describe('buildParkCentralTerrace — ramped west end, flat deck, sheer east', (
     const jubalaLocal = terrace.worldToLocal(new THREE.Vector3(291, 0, 271.5));
     // On the flat deck (past the ramp, before the NE corner): local x ∈ [12, L].
     expect(jubalaLocal.x).toBeGreaterThan(12);
-    expect(jubalaLocal.x).toBeLessThan(128.1);
+    expect(jubalaLocal.x).toBeLessThan(TERRACE_LEN);
     // The flat deck top spans [ramp-crest, east-end] at y≈1.8; Jubala must fall
     // within that span so its body base (y=TERRACE_H) sits on the deck.
     const verts = profileVertices(terrace);
@@ -305,5 +306,89 @@ describe('buildParkCentralTerrace — metal grill (U3, R7-R10)', () => {
     scene.traverse((o) => { if (isGrillMesh(o)) grills.push(o); });
     expect(grills.length).toBeGreaterThan(0);
     for (const g of grills) expect(returned.has(g)).toBe(true);
+  });
+});
+
+describe('buildParkCentralTerrace — terrace-edge iron railing (relocated fence)', () => {
+  // The iron perimeter fence (fences.ts) around Park Central's north wall was
+  // buried inside the solid deck (Y∈[0,1.3] below the deck top at Y=1.8). The fix
+  // relocates it to the flat-deck front edge at deck-top level. These railing
+  // meshes are BoxGeometry + iron material (distinct from the CylinderGeometry
+  // barbecue grill above) and sit at the road-side edge (local Z ≈ −4.7) at
+  // Y ≈ TERRACE_H — not buried at Y=0.
+
+  const DECK_ROAD = 4.7; // deck extends this far outward (local −Z)
+
+  // Railing meshes are merged BufferGeometry (rails + posts) with an iron
+  // material — distinct from the barbecue grill (CylinderGeometry) and the
+  // terrace (ExtrudeGeometry). Filter by iron material + non-barbecue/terrace
+  // geometry so only the relocated fence is matched.
+  function isRailingMesh(o: THREE.Object3D): o is THREE.Mesh {
+    if (!(o instanceof THREE.Mesh)) return false;
+    const geo = o.geometry;
+    if (geo instanceof THREE.ExtrudeGeometry) return false;
+    if (geo instanceof THREE.CylinderGeometry) return false;
+    if (!(geo instanceof THREE.BufferGeometry)) return false;
+    const mat = o.material as THREE.MeshStandardMaterial;
+    if (!(mat instanceof THREE.MeshStandardMaterial)) return false;
+    return mat.metalness >= 0.6 && mat.color.r < 0.2; // dark iron
+  }
+
+  it('iron railing meshes exist as descendants of the terrace group', () => {
+    const { scene, meshes } = build();
+    const group = meshes[0].parent as THREE.Group;
+    const railings: THREE.Mesh[] = [];
+    scene.traverse((o) => { if (isRailingMesh(o)) railings.push(o); });
+    expect(railings.length).toBeGreaterThanOrEqual(2);
+    for (const r of railings) {
+      let p: THREE.Object3D | null = r.parent;
+      let inGroup = false;
+      while (p) { if (p === group) { inGroup = true; break; } p = p.parent; }
+      expect(inGroup).toBe(true);
+    }
+  });
+
+  it('railing sits at deck-top level (Y ≈ TERRACE_H), not buried at Y=0', () => {
+    const { scene, meshes } = build();
+    scene.updateWorldMatrix(true, true);
+    const railings: THREE.Mesh[] = [];
+    scene.traverse((o) => { if (isRailingMesh(o)) railings.push(o); });
+    expect(railings.length).toBeGreaterThan(0);
+    for (const r of railings) {
+      // The railing position is in the merged geometry (mesh position is the
+      // group origin), so read the geometry bounding-box centre's world Y.
+      r.geometry.computeBoundingBox();
+      const center = new THREE.Vector3();
+      r.geometry.boundingBox!.getCenter(center);
+      const wy = r.localToWorld(center.clone()).y;
+      // The railing stands on the deck top: its centre sits well above ground
+      // (a buried fence would centre at Y≈0.65) and within the railing band.
+      expect(wy).toBeGreaterThan(1.5); // deck-top level, not buried at Y≈0.65
+      expect(wy).toBeLessThan(TERRACE_H + 2.0); // within the railing height band
+    }
+  });
+
+  it('railing runs along the flat-deck front edge (group-local X ∈ [RAMP_LEN, TERRACE_LEN], Z ≈ −DECK_ROAD)', () => {
+    const { scene, meshes } = build();
+    scene.updateWorldMatrix(true, true);
+    const group = meshes[0].parent as THREE.Group;
+    const railings: THREE.Mesh[] = [];
+    scene.traverse((o) => { if (isRailingMesh(o)) railings.push(o); });
+    expect(railings.length).toBeGreaterThan(0);
+    for (const r of railings) {
+      // The railing position is encoded in the merged geometry (mesh position
+      // is the group origin), so read the geometry bounding-box centre and
+      // express it in the terrace group's local frame (X along the wall, Z
+      // outward; the road-side front edge is at Z ≈ −DECK_ROAD).
+      r.geometry.computeBoundingBox();
+      const center = new THREE.Vector3();
+      r.geometry.boundingBox!.getCenter(center);
+      const worldCenter = r.localToWorld(center.clone());
+      const gl = group.worldToLocal(worldCenter);
+      expect(gl.x).toBeGreaterThanOrEqual(11); // flat deck (past the ramp)
+      expect(gl.x).toBeLessThanOrEqual(TERRACE_LEN + 0.1);
+      expect(gl.z).toBeLessThan(-3.5); // road-side front edge
+      expect(gl.z).toBeGreaterThan(-DECK_ROAD - 0.3);
+    }
   });
 });
