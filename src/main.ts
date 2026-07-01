@@ -19,6 +19,7 @@ import { buildShopSigns } from './osm/shopSigns';
 import { buildChuysDecor } from './osm/chuysDecor';
 import { buildJubalaDecor } from './osm/jubalaDecor';
 import { buildParkCentralTerrace } from './osm/parkCentralTerrace';
+import { buildNorthWallStorefronts } from './osm/northWallStorefronts';
 import { buildFences } from './osm/fences';
 import { buildStreetscape } from './osm/streetscape';
 import { buildParkStage } from './osm/parkStage';
@@ -122,6 +123,10 @@ async function init(): Promise<void> {
   // west end) that the Jubala storefront sits on. Returns collidable meshes.
   const terraceMeshes = buildParkCentralTerrace(scene);
 
+  // North-wall storefronts flanking Jubala — furniture rental (west), leasing
+  // office + ice cream + One Medical (east). Returns collidable body meshes.
+  const northWallBodyMeshes = buildNorthWallStorefronts(scene);
+
   // Midtown Park stage + perimeter benches + street-side benches near P&M and The Eastern
   buildParkStage(scene, mapData);
   scene.add(buildBenches(mapData));
@@ -142,7 +147,7 @@ async function init(): Promise<void> {
   if (buildingMeshes.length > 0) {
     // Buildings are added to scene, so world matrices are available after scene.add
     buildingGroup.updateWorldMatrix(true, true);
-    collision.build(...buildingMeshes, ...jubalaBodyMeshes, ...terraceMeshes);
+    collision.build(...buildingMeshes, ...jubalaBodyMeshes, ...northWallBodyMeshes, ...terraceMeshes);
     cameraRig.setRaycastFn((from, to) => collision.raycastTo(from, to));
   }
 
