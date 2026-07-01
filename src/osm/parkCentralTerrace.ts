@@ -52,8 +52,10 @@ import * as THREE from 'three';
  */
 
 // ── Wall reference (scene-space, projected from OSM) ──────────────────────────
-const WALL_WEST_X = 204.9;
-const WALL_WEST_Z = 236.4;
+// Exported so the north-wall storefronts module (northWallStorefronts.ts) can
+// derive tenant world positions from the same wall reference the terrace uses.
+export const WALL_WEST_X = 204.9;
+export const WALL_WEST_Z = 236.4;
 const WALL_EAST_X = 323.9;
 const WALL_EAST_Z = 283.8;
 
@@ -61,8 +63,8 @@ const WALL_EAST_Z = 283.8;
 const WALL_DX = WALL_EAST_X - WALL_WEST_X;
 const WALL_DZ = WALL_EAST_Z - WALL_WEST_Z;
 const WALL_LEN = Math.hypot(WALL_DX, WALL_DZ);
-const WALL_UX = WALL_DX / WALL_LEN; // 0.9290
-const WALL_UZ = WALL_DZ / WALL_LEN; // 0.3700
+export const WALL_UX = WALL_DX / WALL_LEN; // 0.9290
+export const WALL_UZ = WALL_DZ / WALL_LEN; // 0.3700
 // Outward normal (toward the road/north): rotate the along-wall unit by -90° in xz.
 const WALL_NX = WALL_UZ;            // 0.3700
 const WALL_NZ = -WALL_UX;           // -0.9290
