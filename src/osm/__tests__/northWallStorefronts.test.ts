@@ -9,8 +9,10 @@ import { buildNorthWallStorefronts } from '../northWallStorefronts';
  * the posture of parkCentralTerrace.test.ts and jubalaDecor.test.ts:
  *   Wall: B=(204.9,236.4) west → A=(323.9,283.8) NE corner, length ≈ 128.1 m,
  *   along-wall unit u=(0.9290,0.3700), outward normal N 21.7° E, JROT ≈ -0.379.
- *   Jubala sits at s≈93 (width 14 → s∈[86,100]); flat deck east of Jubala is
- *   s∈[100,128.1] (≈28 m).
+ *   Jubala sits at s≈93 (width 14 → s∈[86,100]); flat deck runs s∈[12,120]
+ *   (deck shortened to end "a little before" the NE corner at s≈128).
+ *   One Medical anchors the WEST corner (s≈18); furniture rental, leasing, and
+ *   ice cream fill the west-mid and east-of-Jubala spans.
  */
 const WALL_WEST = { x: 204.9, z: 236.4 };
 const WALL_EAST = { x: 323.9, z: 283.8 };
@@ -23,7 +25,8 @@ const TERRACE_H = 1.8;
 const WALL_BEARING_DEG = (Math.atan2(WALL_UZ, WALL_UX) * 180) / Math.PI; // along-edge atan2(z,x) ≈ 21.7
 
 // Tenant widths in west-to-east order (must mirror northWallStorefronts.ts).
-const WIDTHS = [14, 10, 6, 12];
+// One Medical (12) now anchors the west corner; ice cream (6) is easternmost.
+const WIDTHS = [12, 14, 10, 6];
 
 function build() {
   const scene = new THREE.Scene();
@@ -128,16 +131,16 @@ describe('buildNorthWallStorefronts — placement along the wall (R9/R10/R11)', 
     for (let i = 1; i < sValues.length; i++) {
       expect(sValues[i]).toBeGreaterThan(sValues[i - 1]);
     }
+    // One Medical at the WEST corner (s ∈ [12,24], just east of the ramp end at s=12)
+    expect(sValues[0]).toBeGreaterThanOrEqual(12);
+    expect(sValues[0]).toBeLessThanOrEqual(24);
     // furniture rental west of Jubala (s < 86)
-    expect(sValues[0]).toBeLessThan(86);
-    // leasing + ice cream east of Jubala, west of One Medical
-    expect(sValues[1]).toBeGreaterThanOrEqual(100);
-    expect(sValues[1]).toBeLessThan(119);
+    expect(sValues[1]).toBeLessThan(86);
+    // leasing + ice cream east of Jubala (s ≥ 100), west of the shortened deck end (120)
     expect(sValues[2]).toBeGreaterThanOrEqual(100);
-    expect(sValues[2]).toBeLessThan(119);
-    // One Medical at the NE corner (s ∈ [116,128]) and easternmost
-    expect(sValues[3]).toBeGreaterThanOrEqual(116);
-    expect(sValues[3]).toBeLessThanOrEqual(128);
+    expect(sValues[2]).toBeLessThan(120);
+    expect(sValues[3]).toBeGreaterThanOrEqual(100);
+    expect(sValues[3]).toBeLessThan(120);
   });
 
   it('no two body centres are closer than (wi+wj)/2 − 0.5 (no overlap)', () => {
@@ -155,13 +158,13 @@ describe('buildNorthWallStorefronts — placement along the wall (R9/R10/R11)', 
     }
   });
 
-  it('One Medical does not cross the sheer east edge (s ≤ 128.1 + half-width)', () => {
+  it('the easternmost body (ice cream) does not cross the shortened deck end (s ≤ 120 + half-width)', () => {
     const { meshes } = build();
     const last = meshes[meshes.length - 1];
     const p = new THREE.Vector3();
     last.getWorldPosition(p);
     const s = alongS(p.x, p.z);
-    expect(s + WIDTHS[3] / 2).toBeLessThanOrEqual(128.1 + 0.01);
+    expect(s + WIDTHS[3] / 2).toBeLessThanOrEqual(120 + 0.01);
   });
 });
 

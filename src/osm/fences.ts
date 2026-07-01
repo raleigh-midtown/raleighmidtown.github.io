@@ -2,6 +2,10 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import type { FeatureCollection, Feature, Polygon, MultiPolygon } from 'geojson';
 import { projectLonLat } from './project.js';
+import {
+  WALL_WEST_X, WALL_WEST_Z, WALL_UX, WALL_UZ,
+  TERRACE_LEN, DECK_ROAD,
+} from './parkCentralTerrace.js';
 
 const FENCE_OFFSET = 0.6;   // how far outside the wall the fence sits
 const FENCE_HEIGHT = 1.3;
@@ -97,6 +101,19 @@ export function buildFences(geojson: FeatureCollection): THREE.Group {
         const [nx, nz] = outwardNormal(ax, az, bx, bz, cx, cz);
         const oax = ax + nx * FENCE_OFFSET, oaz = az + nz * FENCE_OFFSET;
         const obx = bx + nx * FENCE_OFFSET, obz = bz + nz * FENCE_OFFSET;
+
+        // Suppress fence segments that fall under the Park Central north-wall
+        // terrace deck: the deck is a solid ExtrudeGeometry (top at Y=1.8) that
+        // would bury the ground-level fence (Y∈[0,1.3]). The deck spans along-wall
+        // s ∈ [0, TERRACE_LEN] and outward d ∈ [−DECK_BACK, DECK_ROAD]; the
+        // relocated iron railing now marks that edge at deck-top level (see
+        // parkCentralTerrace.ts), so the buried segment is skipped here.
+        const midX = (oax + obx) / 2, midZ = (oaz + obz) / 2;
+        const fs = (midX - WALL_WEST_X) * WALL_UX + (midZ - WALL_WEST_Z) * WALL_UZ;
+        const fd = (midX - WALL_WEST_X) * WALL_UZ + (midZ - WALL_WEST_Z) * (-WALL_UX);
+        if (fs >= -1 && fs <= TERRACE_LEN + 1 && fd >= -1.5 && fd <= DECK_ROAD + 0.5) {
+          continue;
+        }
 
         // Three horizontal rails along the offset edge
         railGeos.push(railBox(oax, oaz, obx, obz, RAIL_THICK, RAIL_DEPTH, yTop));

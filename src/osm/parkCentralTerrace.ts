@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 /**
  * Park Central north-wall terrace — a raised, wall-oriented deck that extends
@@ -77,10 +78,14 @@ export const TERRACE_H = 1.8;
 
 // ── Terrace geometry ─────────────────────────────────────────────────────────
 const RAMP_LEN = 12;        // ramp run (m) — ≥ 12 per R3 → ≤ ~8.6° grade
-const DECK_ROAD = 4.7;      // deck extends this far OUTWARD (north, toward road) from the wall
+export const DECK_ROAD = 4.7; // deck extends this far OUTWARD (north, toward road) from the wall
 const DECK_BACK = 1.3;      // deck extends this far INWARD (south, into the wall line) to sit under the Jubala body (body centre ~0.8 m inward)
 const EXTRUDE_DEPTH = DECK_ROAD + DECK_BACK; // 6.0 — extrude length along local +Z
-const TERRACE_LEN = WALL_LEN;                // 128.1 — full north wall: ramp + flat deck to NE corner
+// Deck ends "a little before" the NE corner (full wall ≈ 128.1 m): the easternmost
+// tenant (ice cream, s=113) clears the sheer east edge with ~7 m to spare, and
+// the NE corner stays open. Exported so fences.ts can suppress the buried
+// north-wall fence segment that falls under the deck.
+export const TERRACE_LEN = 120;
 
 // Group origin: the wall's west end (point B). The ramp foot sits here; the
 // flat deck runs east to the NE corner (point A).
@@ -144,6 +149,59 @@ export function buildParkCentralTerrace(scene: THREE.Scene): THREE.Mesh[] {
   grate.position.set(grillX, TERRACE_H + 0.93, grillZ);
   grate.castShadow = true;
   group.add(grate);
+
+  // ── Terrace-edge iron railing (relocated fence)
+  // The iron perimeter fence (fences.ts) around Park Central's north wall was
+  // buried inside the solid deck (its Y∈[0,1.3] sat below the deck top at 1.8).
+  // Per the user's direction, the fence is relocated to the flat-deck front
+  // edge at deck-top level: an iron railing along local X ∈ [RAMP_LEN,
+  // TERRACE_LEN] at the road-side front edge (local Z = −DECK_ROAD), standing
+  // on the deck top (Y base = TERRACE_H). The buried north-wall fence segment is
+  // suppressed in fences.ts (see skipUnderDeck there). These railing meshes are
+  // decorative (not returned for collision), matching the fence convention.
+  const RAIL_H = 1.1;            // railing height above the deck
+  const R_POST_SPACING = 2.2;
+  const R_POST_THICK = 0.10;
+  const R_RAIL_THICK = 0.06;
+  const R_RAIL_DEPTH = 0.05;
+  const railMat = new THREE.MeshStandardMaterial({
+    color: 0x1a1a1c,
+    roughness: 0.55,
+    metalness: 0.65,
+  });
+  const edgeZ = -DECK_ROAD;          // road-side front edge
+  const startX = RAMP_LEN;           // flat deck starts after the ramp
+  const endX = TERRACE_LEN;          // deck east end
+
+  // Rails: three horizontal bars spanning the flat-deck front edge.
+  const railGeos: THREE.BufferGeometry[] = [];
+  const railYs = [
+    TERRACE_H + 0.08,
+    TERRACE_H + RAIL_H * 0.55,
+    TERRACE_H + RAIL_H - R_RAIL_THICK / 2,
+  ];
+  for (const ry of railYs) {
+    const g = new THREE.BoxGeometry(endX - startX, R_RAIL_THICK, R_RAIL_DEPTH);
+    g.translate((startX + endX) / 2, ry, edgeZ);
+    railGeos.push(g);
+  }
+  const railMesh = new THREE.Mesh(mergeGeometries(railGeos, false)!, railMat);
+  railMesh.castShadow = true;
+  group.add(railMesh);
+
+  // Posts: vertical bars every R_POST_SPACING along the edge, standing on the deck.
+  const postGeos: THREE.BufferGeometry[] = [];
+  const span = endX - startX;
+  const numPosts = Math.max(2, Math.floor(span / R_POST_SPACING) + 1);
+  for (let p = 0; p < numPosts; p++) {
+    const x = startX + (span * p) / (numPosts - 1);
+    const g = new THREE.BoxGeometry(R_POST_THICK, RAIL_H, R_POST_THICK);
+    g.translate(x, TERRACE_H + RAIL_H / 2, edgeZ);
+    postGeos.push(g);
+  }
+  const postMesh = new THREE.Mesh(mergeGeometries(postGeos, false)!, railMat);
+  postMesh.castShadow = true;
+  group.add(postMesh);
 
   return [terrace, barrel, grate];
 }

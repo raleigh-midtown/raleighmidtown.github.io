@@ -14,17 +14,20 @@ import {
  * `parkCentralTerrace.ts` for the wall reference and coordinate conventions.
  *
  * Tenants, west → east (along-wall `s`, metres from the wall's west end):
- *   - Furniture rental: s = 50, width 14  (s ∈ [43, 57])   — west of Jubala
+ *   - One Medical:       s = 18,  width 12 (s ∈ [12, 24])  — WEST corner (just
+ *                        east of the ramp end at s=12)
+ *   - Furniture rental: s = 50,  width 14 (s ∈ [43, 57])  — west of Jubala
  *   - Jubala (unchanged): s = 93, width 14 (s ∈ [86, 100]) — in jubalaDecor.ts
  *   - Leasing office:    s = 105, width 10 (s ∈ [100, 110]) — east of Jubala
  *   - Ice cream:         s = 113, width 6  (s ∈ [110, 116])
- *   - One Medical:       s = 122, width 12 (s ∈ [116, 128]) — NE corner
  *
- * The three east-side storefronts form a contiguous row with Jubala (the user
- * asked for stores "continuously on left and right of Jubala"): they fit the
- * 28 m of flat deck east of Jubala (s ∈ [100, 128.1]) exactly, with One Medical
- * ending at the sheer east edge (s = 128.1, ~0.1 m clearance). The west side
- * carries the single furniture-rental storefront centred on the west flat deck.
+ * One Medical anchors the west corner of the flat deck (the user moved it from
+ * the NE corner to the west corner). The deck is shortened to end at s=120 ("a
+ * little before" the NE corner at s≈128), so the easternmost tenant (ice cream,
+ * s=113) clears the new sheer east edge with ~4 m to spare. The west side carries
+ * One Medical (corner) + the furniture-rental storefront on the mid-west flat
+ * deck; the east side carries leasing + ice cream in a contiguous row with
+ * Jubala.
  *
  * Coordinate conventions: +X east, +Z south, +Y up.
  */
@@ -40,6 +43,14 @@ interface Tenant {
 }
 
 const TENANTS: Tenant[] = [
+  {
+    alongS: 18,
+    width: 12,
+    bodyColor: 0xE8ECEF,        // clinical off-white
+    signText: 'ONE MEDICAL',
+    signTextColor: '#FFFFFF',   // white on dark
+    signBgColor: '#1F3A5F',
+  },
   {
     alongS: 50,
     width: 14,
@@ -61,14 +72,6 @@ const TENANTS: Tenant[] = [
     signText: 'ICE CREAM',
     signTextColor: '#7A3F1A',   // brown on transparent
     blade: { text: 'ICE CREAM', bg: '#F0A0C0', fg: '#FFFFFF' },
-  },
-  {
-    alongS: 122,
-    width: 12,
-    bodyColor: 0xE8ECEF,        // clinical off-white
-    signText: 'ONE MEDICAL',
-    signTextColor: '#FFFFFF',   // white on dark
-    signBgColor: '#1F3A5F',
   },
 ];
 
